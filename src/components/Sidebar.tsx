@@ -4,6 +4,7 @@ import { AetraLogo } from './AetraLogo';
 import {
   FileText,
   Navigation,
+  CreditCard,
   MessageSquareHeart,
   HelpCircle,
   ChevronRight,
@@ -13,13 +14,14 @@ import {
   LayoutDashboard,
   LogOut,
   Users,
-  Database,
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabase';
 
 interface SidebarProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  adminSubTab?: 'registrations' | 'bills' | 'surveys';
+  onSelectAdminSubTab?: (subTab: 'registrations' | 'bills' | 'surveys') => void;
   registeredCount: number;
   isOpenMobile: boolean;
   setIsOpenMobile: (open: boolean) => void;
@@ -33,6 +35,8 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
+  adminSubTab = 'registrations',
+  onSelectAdminSubTab,
   registeredCount,
   isOpenMobile,
   setIsOpenMobile,
@@ -44,10 +48,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   interface NavItem {
     id: TabType;
+    subTab?: 'registrations' | 'bills' | 'surveys';
     label: string;
     sublabel: string;
     icon: any;
     isLiveDot?: boolean;
+    isHighlight?: boolean;
   }
 
   const customerNavItems: NavItem[] = [
@@ -63,6 +69,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       sublabel: 'Lacak Status Pemasangan',
       icon: Navigation,
       isLiveDot: true,
+    },
+    {
+      id: 'billing',
+      label: 'Pembayaran Tagihan',
+      sublabel: 'Cek & Bayar Tagihan Air',
+      icon: CreditCard,
+      isHighlight: true,
     },
     {
       id: 'survey',
@@ -81,13 +94,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const adminNavItems: NavItem[] = [
     {
       id: 'admin',
-      label: 'Data Pelanggan',
-      sublabel: 'Pendaftaran Sambungan Baru',
+      subTab: 'registrations',
+      label: 'Data Registrasi Baru',
+      sublabel: 'Verifikasi Berkas & SPKO',
       icon: Users,
+    },
+    {
+      id: 'admin',
+      subTab: 'bills',
+      label: 'Tagihan Pelanggan',
+      sublabel: 'Input Manual & Impor Excel',
+      icon: CreditCard,
+      isHighlight: true,
+    },
+    {
+      id: 'admin',
+      subTab: 'surveys',
+      label: 'Survey Kepuasan',
+      sublabel: 'Rekapitulasi CSAT & NPS',
+      icon: MessageSquareHeart,
     },
   ];
 
-  const currentNavItems = userRole === 'admin' ? adminNavItems : customerNavItems;
+  const isAdminAccount = currentUser?.role === 'admin' || userRole === 'admin';
+  const currentNavItems = isAdminAccount ? adminNavItems : customerNavItems;
 
   return (
     <>
@@ -117,45 +147,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Role Switcher in Sidebar (Only admin can toggle between admin & customer preview) */}
-        {currentUser?.role === 'admin' ? (
+        {/* Portal Status Header Badge */}
+        {isAdminAccount ? (
           <div className="px-3 pt-3">
-            <div className="p-1 bg-slate-100 rounded-xl flex items-center border border-slate-200/80">
-              <button
-                type="button"
-                onClick={() => {
-                  onSwitchRole('customer');
-                  if (activeTab === 'admin') setActiveTab('registration');
-                }}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-                  userRole === 'customer'
-                    ? 'bg-white text-[#005DAA] shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <User className="w-3.5 h-3.5" />
-                Pelanggan
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onSwitchRole('admin');
-                  setActiveTab('admin');
-                }}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-                  userRole === 'admin'
-                    ? 'bg-[#005DAA] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Admin
-              </button>
+            <div className="py-2.5 px-3.5 bg-linear-to-r from-[#005DAA] via-[#004B8A] to-[#003868] text-white rounded-xl flex items-center justify-between shadow-xs border border-blue-900/20">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-300" />
+                <span className="text-xs font-bold tracking-wide">PORTAL ADMIN</span>
+              </div>
+              <span className="text-[10px] bg-white/20 text-white font-mono px-2 py-0.5 rounded font-bold">
+                BACKOFFICE
+              </span>
             </div>
           </div>
         ) : (
           <div className="px-3 pt-3">
-            <div className="py-2 px-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs font-bold text-[#005DAA]">
+            <div className="py-2.5 px-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs font-bold text-[#005DAA]">
               <User className="w-4 h-4" />
               <span>Portal Pelanggan Resmi</span>
             </div>
@@ -165,25 +172,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Primary Navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
           <div className="px-2 pb-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-            <span>{userRole === 'admin' ? 'Menu Backoffice' : 'Menu Layanan'}</span>
-            <span className="text-[10px] font-normal text-slate-400 lowercase">
-              {userRole === 'admin' ? 'admin' : 'pelanggan'}
+            <span>{isAdminAccount ? 'Menu Backoffice Admin' : 'Menu Layanan'}</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase">
+              {isAdminAccount ? 'Admin' : 'Pelanggan'}
             </span>
           </div>
 
           <nav className="space-y-1">
             {currentNavItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
+              const isActive =
+                isAdminAccount && item.subTab
+                  ? activeTab === 'admin' && adminSubTab === item.subTab
+                  : activeTab === item.id;
 
               return (
                 <button
-                  key={item.id}
+                  key={`${item.id}-${item.subTab || 'default'}`}
                   onClick={() => {
                     setActiveTab(item.id);
+                    if (item.subTab && onSelectAdminSubTab) {
+                      onSelectAdminSubTab(item.subTab);
+                    }
                     setIsOpenMobile(false);
                   }}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-150 group ${
+                  className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-150 group cursor-pointer ${
                     isActive
                       ? 'bg-[#005DAA] text-white shadow-sm shadow-blue-900/15 font-medium'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -260,36 +273,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* Supabase Cloud Connection Status */}
-        {onOpenSupabaseModal && (
-          <div className="px-3 pb-2">
-            <button
-              type="button"
-              onClick={onOpenSupabaseModal}
-              className={`w-full py-2 px-3 rounded-xl border flex items-center justify-between text-xs font-semibold transition cursor-pointer ${
-                isSupabaseConfigured()
-                  ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900 hover:bg-emerald-100/80'
-                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-left">
-                <Database className={`w-4 h-4 shrink-0 ${isSupabaseConfigured() ? 'text-emerald-600' : 'text-slate-400'}`} />
-                <div>
-                  <div className="leading-tight font-bold text-[11px]">Database Supabase</div>
-                  <div className="text-[10px] text-slate-500 font-normal">
-                    {isSupabaseConfigured() ? 'Cloud Terhubung' : 'Konfigurasi DB'}
-                  </div>
-                </div>
-              </div>
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isSupabaseConfigured() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
-                }`}
-                title={isSupabaseConfigured() ? 'Terhubung' : 'Offline / Cache'}
-              />
-            </button>
-          </div>
-        )}
 
         {/* Bottom Status / Copyright */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-center">

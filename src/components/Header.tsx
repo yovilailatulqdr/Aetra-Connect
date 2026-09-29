@@ -46,6 +46,11 @@ export const Header: React.FC<HeaderProps> = ({
       subtitle: 'Pusat Bantuan Resmi, Syarat Administrasi & Info Pemeliharaan Jaringan Pipa',
       tag: 'Pusat Informasi',
     },
+    billing: {
+      title: 'Pembayaran Tagihan Bulanan',
+      subtitle: 'Inquiry Rekening Air, Pemakaian Kubikasi (m³) & Pelunasan Resmi PT Aetra Air Tangerang',
+      tag: 'Cek & Bayar Tagihan',
+    },
     admin: {
       title: 'Data Pelanggan Pendaftaran Sambungan Baru',
       subtitle: 'Pengendalian Permohonan, Verifikasi Dokumen, Ekspor/Impor Excel & Progres SPKO Lapangan',
@@ -112,61 +117,13 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right: Role Switcher & Account Info */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Supabase Database Connection Status */}
-          {onOpenSupabaseModal && (
-            <button
-              type="button"
-              onClick={onOpenSupabaseModal}
-              title={
-                isSupabaseConfigured()
-                  ? 'Database Supabase Cloud Terhubung. Klik untuk tes atau cek status.'
-                  : 'Database Cloud Belum Terhubung (Mode Cache Lokal). Klik untuk konfigurasi.'
-              }
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer shadow-2xs ${
-                isSupabaseConfigured()
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
-                  : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
-              }`}
-            >
-              <Database className={`w-3.5 h-3.5 ${isSupabaseConfigured() ? 'text-emerald-600' : 'text-amber-600'}`} />
-              <span className="hidden md:inline">
-                {isSupabaseConfigured() ? 'DB: Terhubung' : 'DB: Setup'}
-              </span>
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isSupabaseConfigured() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
-                }`}
-              />
-            </button>
-          )}
+          {/* Supabase connection runs silently in the background per user preference */}
 
-          {/* Role Status (Admin can switch between views; Customer is locked to customer portal) */}
+          {/* Role Status Badge */}
           {currentUser?.role === 'admin' ? (
-            <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => onSwitchRole('customer')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  userRole === 'customer'
-                    ? 'bg-white text-[#005DAA] shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <User className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Portal</span> Pelanggan
-              </button>
-              <button
-                type="button"
-                onClick={() => onSwitchRole('admin')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  userRole === 'admin'
-                    ? 'bg-[#005DAA] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Portal</span> Admin
-              </button>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-[#005DAA] to-[#003868] text-white text-xs font-bold shadow-2xs border border-blue-900/30">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+              <span>Portal Admin Backoffice</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-[#005DAA] text-xs font-bold shadow-2xs">

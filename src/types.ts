@@ -1,5 +1,46 @@
-export type TabType = 'registration' | 'tracking' | 'survey' | 'faq' | 'admin';
+export type TabType = 'registration' | 'tracking' | 'billing' | 'survey' | 'faq' | 'admin';
 export type UserRole = 'customer' | 'admin';
+export interface UserProfile {
+  role: string;
+  name: string;
+  title?: string;
+  avatar?: string;
+  division?: string;
+}
+export type CustomerClass = string;
+export type WorkflowStatus = string;
+export type ReaderCategory = string;
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  action: string;
+  user: string;
+  details?: any;
+  [key: string]: any;
+}
+
+export interface IndustryCustomer {
+  id: string;
+  nomorPelanggan: string;
+  namaPelanggan: string;
+  alamat?: string;
+  customerClass?: string;
+  fotoMeterUrl?: string;
+  [key: string]: any;
+}
+
+export interface MeterReader {
+  id: string;
+  nama: string;
+  [key: string]: any;
+}
+
+export interface CycleSchedule {
+  id: string;
+  siklus: string;
+  [key: string]: any;
+}
 
 export interface UserAccount {
   id: string;
@@ -9,6 +50,42 @@ export interface UserAccount {
   password?: string;
   role: UserRole;
   createdAt: string;
+}
+
+export interface MonthlyBillRecord {
+  id: string;
+  idPelanggan: string;
+  noSr?: string;
+  nama: string;
+  alamat: string;
+  golonganTarif: string;
+  nomorMeter: string;
+  periodeBulan: string;
+  tanggalJatuhTempo: string;
+  standLalu: number;
+  standKini: number;
+  pemakaianM3: number;
+  rincianBlok: {
+    blok1M3: number;
+    blok1Tarif: number;
+    blok1Total: number;
+    blok2M3: number;
+    blok2Tarif: number;
+    blok2Total: number;
+    blok3M3: number;
+    blok3Tarif: number;
+    blok3Total: number;
+  };
+  biayaAir: number;
+  biayaPemeliharaanMeter: number;
+  biayaAdministrasi: number;
+  retribusi: number;
+  denda: number;
+  totalTagihan: number;
+  status: 'BELUM LUNAS' | 'LUNAS';
+  tanggalBayar?: string;
+  metodeBayar?: string;
+  noReferensi?: string;
 }
 
 export interface UploadedDoc {
@@ -126,10 +203,14 @@ export interface RegistrationFormData {
     noSegel: string;
     noSeriMeter: string;
     namaTeknisi?: string;
+    telpPetugas?: string;
+    idPetugasSurveyor?: string;
+    idPetugasTeknisi?: string;
   };
   fotoPropertiFiles?: PropertyPhoto[];
   // Pembayaran
   skemaPembayaran: string;
+  metodePembayaran?: string;
   keteranganSkema?: string;
   biayaSambungan: number;
   golonganTarif?: string;
