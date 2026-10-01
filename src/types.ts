@@ -1,5 +1,12 @@
 export type TabType = 'registration' | 'tracking' | 'billing' | 'survey' | 'faq' | 'admin';
 export type UserRole = 'customer' | 'admin';
+export type RegistrationStatus = 
+  | 'NEW_USER' 
+  | 'VERIFYING' 
+  | 'WAITING_PAYMENT' 
+  | 'INSTALLATION_TRACKING' 
+  | 'ACTIVE_CUSTOMER';
+
 export interface UserProfile {
   role: string;
   name: string;
@@ -13,17 +20,25 @@ export type ReaderCategory = string;
 
 export interface AuditLog {
   id: string;
-  timestamp: string;
-  action: string;
+  timestamp?: string;
+  action?: string;
   user: string;
+  time?: string;
+  desc?: string;
+  role?: string;
+  type?: string;
   details?: any;
   [key: string]: any;
 }
 
 export interface IndustryCustomer {
   id: string;
-  nomorPelanggan: string;
-  namaPelanggan: string;
+  nomorPelanggan?: string;
+  namaPelanggan?: string;
+  nama: string;
+  email: string;
+  cycle: string;
+  kelas: string;
   alamat?: string;
   customerClass?: string;
   fotoMeterUrl?: string;
@@ -37,8 +52,11 @@ export interface MeterReader {
 }
 
 export interface CycleSchedule {
-  id: string;
-  siklus: string;
+  id?: string;
+  siklus?: string;
+  cycle: string;
+  bulan: string;
+  hariH: number;
   [key: string]: any;
 }
 
@@ -47,6 +65,7 @@ export interface UserAccount {
   idPelanggan: string;
   nama: string;
   email: string;
+  telp?: string;
   password?: string;
   role: UserRole;
   createdAt: string;
@@ -122,6 +141,8 @@ export interface RegistrationFormData {
   kecamatanKtp?: string;
   kelurahanKtp: string;
   desaKtp?: string;
+  kotaKtp?: string;
+  provinsiKtp?: string;
   telpHp: string;
   email: string;
   alamatPasang: string;
@@ -130,6 +151,8 @@ export interface RegistrationFormData {
   kecamatanPasang?: string;
   kelurahanPasang: string;
   desaPasang?: string;
+  kotaPasang?: string;
+  provinsiPasang?: string;
   pekerjaan: string;
   statusKepemilikan: string;
   statusKepemilikanLainnya?: string;
@@ -208,6 +231,13 @@ export interface RegistrationFormData {
     idPetugasTeknisi?: string;
   };
   fotoPropertiFiles?: PropertyPhoto[];
+  // Workflow & State Management
+  statusPendaftaran?: RegistrationStatus;
+  status_pendaftaran?: RegistrationStatus;
+  nomorPembayaran?: string;
+  nomor_pembayaran?: string;
+  isSkAccepted?: boolean;
+  is_sk_accepted?: boolean;
   // Pembayaran
   skemaPembayaran: string;
   metodePembayaran?: string;
@@ -217,13 +247,13 @@ export interface RegistrationFormData {
   kategoriTarifKlausul?: string;
   hasUsahaKomersil?: boolean;
   persetujuan: boolean;
-  // Status Tracking Terkait
-  trackingStep: 1 | 2 | 3 | 4;
+  // Status Tracking Terkait (1 s/d 5)
+  trackingStep: 1 | 2 | 3 | 4 | 5;
   createdAt: string;
 }
 
 export interface TrackingStepInfo {
-  step: 1 | 2 | 3 | 4;
+  step: 1 | 2 | 3 | 4 | 5;
   title: string;
   statusLabel: string;
   updatedAt: string;
@@ -247,7 +277,7 @@ export interface TrackingTimelineEvent {
   title: string;
   description: string;
   status: 'completed' | 'in_progress' | 'pending';
-  step: 1 | 2 | 3 | 4;
+  step: 1 | 2 | 3 | 4 | 5;
   actor?: string;
   badge?: string;
 }
@@ -258,7 +288,7 @@ export interface CustomerTrackingRecord {
   idPelanggan?: string;
   email?: string;
   nama: string;
-  currentStep: 1 | 2 | 3 | 4;
+  currentStep: 1 | 2 | 3 | 4 | 5;
   telp: string;
   alamat: string;
   steps: TrackingStepInfo[];
@@ -266,6 +296,8 @@ export interface CustomerTrackingRecord {
   estimasiSelesai?: string;
   golonganTarif?: string;
   biayaSambungan?: number;
+  nomorPembayaran?: string;
+  nomor_pembayaran?: string;
   statusPembayaran?: 'Lunas' | 'Menunggu Pembayaran' | 'Belum Ditagihkan';
   petugasSurveyor?: {
     nama: string;

@@ -414,8 +414,8 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ submissions, onSub
                 >
                   <option value="">-- PILIH DESA --</option>
                   {currentArea ? (
-                    currentArea.desaList.map((desa) => (
-                      <option key={desa} value={desa}>
+                    currentArea.desaList.map((desa, idx) => (
+                      <option key={`survey-desa-${currentArea.kecamatan}-${desa}-${idx}`} value={desa}>
                         DESA {desa.toUpperCase()}
                       </option>
                     ))
@@ -556,10 +556,10 @@ export const SurveySection: React.FC<SurveySectionProps> = ({ submissions, onSub
               >
                 <option value="Semua">Semua Wilayah Pelayanan</option>
                 {AETRA_SERVICE_AREAS.map((a) => (
-                  <optgroup key={a.kecamatan} label={`KECAMATAN ${a.kecamatan}`}>
-                    <option value={a.kecamatan}>Kecamatan {a.kecamatan} (Semua Desa)</option>
-                    {a.desaList.map((d) => (
-                      <option key={d} value={d}>
+                  <optgroup key={`feed-group-${a.kecamatan}`} label={`KECAMATAN ${a.kecamatan}`}>
+                    <option key={`feed-kec-${a.kecamatan}`} value={a.kecamatan}>Kecamatan {a.kecamatan} (Semua Desa)</option>
+                    {a.desaList.map((d, dIdx) => (
+                      <option key={`feed-desa-${a.kecamatan}-${d}-${dIdx}`} value={d}>
                         &nbsp;&nbsp;Desa {d}
                       </option>
                     ))}

@@ -66,8 +66,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
             </div>
           </div>
 
-          {/* Key Identifiers (ID Pelanggan, No SR & No Form) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-linear-to-r from-blue-50/70 to-emerald-50/70 p-4 rounded-xl border border-blue-200">
+          {/* Key Identifiers (ID Pelanggan & No SR) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-linear-to-r from-blue-50/70 to-emerald-50/70 p-4 rounded-xl border border-blue-200">
             <div>
               <span className="text-[11px] text-emerald-800 uppercase font-bold flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -80,17 +80,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
             </div>
             <div>
               <span className="text-[11px] text-[#005DAA] uppercase font-bold">No. SR (Sambungan)</span>
-              <div className="text-lg sm:text-xl font-black text-[#005DAA] font-mono tracking-wider mt-0.5">
+              <div className="text-xl sm:text-2xl font-black text-[#005DAA] font-mono tracking-wider mt-0.5">
                 {data.noSr}
               </div>
-              <span className="text-[10px] text-slate-500">Sambungan Rumah</span>
-            </div>
-            <div>
-              <span className="text-[11px] text-slate-600 uppercase font-bold">No. Form</span>
-              <div className="text-lg sm:text-xl font-black text-slate-800 font-mono tracking-wider mt-0.5">
-                {data.noForm}
-              </div>
-              <span className="text-[10px] text-slate-500">Registrasi Formulir</span>
+              <span className="text-[10px] text-slate-500">Nomor Sambungan Rumah</span>
             </div>
           </div>
 
@@ -127,8 +120,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ data, isOpen, onClos
                   data.persyaratan.ktp ? 'KTP' : null,
                   data.persyaratan.kk ? 'KK' : null,
                   data.persyaratan.pbb ? 'PBB' : null,
-                  data.persyaratan.suratDomisili ? 'Surat Domisili' : null,
-                  data.persyaratan.suratKuasaSewa ? 'Surat Kuasa Sewa' : null,
                   data.persyaratan.lainnya ? 'Dokumen Lain' : null,
                 ].filter(Boolean).join(', ') || 'Tidak ada berkas'}
                 {data.persyaratanFiles && Object.keys(data.persyaratanFiles).length > 0 && (

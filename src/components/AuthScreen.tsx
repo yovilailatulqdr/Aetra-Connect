@@ -94,26 +94,56 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       accounts = [];
     }
 
-    // Default admin account: username: admin, password: aetra123
-    const adminIndex = accounts.findIndex((a) => a.role === 'admin' || a.id === 'acc-admin');
-    if (adminIndex >= 0) {
-      accounts[adminIndex] = {
-        ...accounts[adminIndex],
-        email: accounts[adminIndex].email || 'admin@aetra.co.id',
-        password: 'aetra123',
-        role: 'admin',
-      };
-    } else {
-      accounts.unshift({
+    // Default required accounts
+    const defaultList: UserAccount[] = [
+      {
         id: 'acc-admin',
         idPelanggan: '10999999',
         nama: 'Administrator Aetra Tangerang',
         email: 'admin@aetra.co.id',
+        telp: '081199887766',
         password: 'aetra123',
         role: 'admin',
         createdAt: new Date().toISOString(),
-      });
-    }
+      },
+      {
+        id: 'acc-nabila',
+        idPelanggan: '10739182',
+        nama: 'Nabila Kusumaningsih',
+        email: 'nabilakusumaningsih@gmail.com',
+        telp: '081298765432',
+        password: '1234',
+        role: 'customer',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'acc-amara',
+        idPelanggan: '10928371',
+        nama: 'Amara Maharani',
+        email: 'amaramaharani@gmail.com',
+        telp: '081322334455',
+        password: '1234',
+        role: 'customer',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    defaultList.forEach((defAcc) => {
+      const idx = accounts.findIndex(
+        (a) =>
+          (a.email && defAcc.email && a.email.toLowerCase() === defAcc.email.toLowerCase()) ||
+          (a.idPelanggan && defAcc.idPelanggan && a.idPelanggan === defAcc.idPelanggan)
+      );
+      if (idx >= 0) {
+        accounts[idx] = {
+          ...accounts[idx],
+          ...defAcc,
+          password: defAcc.password, // Ensure password is set accurately
+        };
+      } else {
+        accounts.push(defAcc);
+      }
+    });
 
     localStorage.setItem('aetra_accounts', JSON.stringify(accounts));
     return accounts;
@@ -125,34 +155,57 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     const identifier = loginIdentifier.trim().toLowerCase();
+    const cleanPhone = identifier.replace(/[^0-9]/g, '');
     const pass = loginPassword.trim();
 
     setTimeout(() => {
       setIsLoading(false);
       if (!identifier || !pass) {
-        setErrorMessage('Silakan masukkan Username / Email dan Kata Sandi.');
+        setErrorMessage('Silakan masukkan Email / No. Telepon / ID Pelanggan dan Kata Sandi.');
         return;
       }
 
       const accounts = getStoredAccounts();
 
       // Check admin match (username 'admin' or email 'admin@aetra.co.id') or customer match
-      const matched = accounts.find(
-        (acc) =>
-          ((acc.role === 'admin' && (identifier === 'admin' || identifier === 'admin@aetra.co.id')) ||
-            acc.email.toLowerCase() === identifier ||
-            acc.idPelanggan === identifier) &&
-          acc.password === pass
-      );
+      const matched = accounts.find((acc) => {
+        const isPasswordCorrect = acc.password === pass;
+        if (!isPasswordCorrect) return false;
+
+        if (acc.role === 'admin' && (identifier === 'admin' || identifier === 'admin@aetra.co.id')) {
+          return true;
+        }
+
+        if (acc.email && acc.email.toLowerCase() === identifier) {
+          return true;
+        }
+
+        if (acc.idPelanggan && acc.idPelanggan === identifier) {
+          return true;
+        }
+
+        if (acc.telp && cleanPhone.length >= 8 && acc.telp.replace(/[^0-9]/g, '').includes(cleanPhone)) {
+          return true;
+        }
+
+        if (cleanPhone.length >= 8 && acc.email.startsWith(cleanPhone)) {
+          return true;
+        }
+
+        return false;
+      });
 
       if (matched) {
         onLoginSuccess(matched);
       } else {
-        const isKnownEmail = accounts.some(
-          (a) => a.email.toLowerCase() === identifier || a.idPelanggan === identifier
-        );
+        const isKnownUser = accounts.some((a) => {
+          if (a.email && a.email.toLowerCase() === identifier) return true;
+          if (a.idPelanggan && a.idPelanggan === identifier) return true;
+          if (a.telp && cleanPhone.length >= 8 && a.telp.replace(/[^0-9]/g, '').includes(cleanPhone)) return true;
+          return false;
+        });
 
-        if (!isKnownEmail && identifier !== 'admin' && identifier !== 'admin@aetra.co.id') {
+        if (!isKnownUser && identifier !== 'admin' && identifier !== 'admin@aetra.co.id') {
           setErrorMessage(
             'Akun belum terdaftar di sistem. Silakan pilih tab "Daftar Akun Baru" di atas untuk mendaftarkan akun pelanggan Anda.'
           );
@@ -170,12 +223,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     const nama = regNama.trim();
-    const email = regEmail.trim().toLowerCase();
+    const contact = regEmail.trim();
     const pass = regPassword.trim();
 
-    if (!nama || !email || !pass) {
+    if (!nama || !contact || !pass) {
       setIsLoading(false);
-      setErrorMessage('Seluruh field formulir (Nama, Email, Kata Sandi) wajib diisi.');
+      setErrorMessage('Seluruh field formulir (Nama, Alamat Email / No. Telepon, Kata Sandi) wajib diisi.');
       return;
     }
 
@@ -186,11 +239,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     }
 
     const accounts = getStoredAccounts();
-    const existing = accounts.find((a) => a.email.toLowerCase() === email);
+    const cleanPhone = contact.replace(/[^0-9]/g, '');
+    const isPhoneNumber = cleanPhone.length >= 8 && /^[0-9+-\s]+$/.test(contact);
+
+    const existing = accounts.find((a) => {
+      if (a.email && a.email.toLowerCase() === contact.toLowerCase()) return true;
+      if (isPhoneNumber && a.telp && a.telp.replace(/[^0-9]/g, '') === cleanPhone) return true;
+      if (isPhoneNumber && a.email.startsWith(cleanPhone)) return true;
+      return false;
+    });
 
     if (existing) {
       setIsLoading(false);
-      setErrorMessage(`Email "${email}" sudah terdaftar. Silakan langsung masuk pada tab Masuk Akun.`);
+      setErrorMessage(`Kontak "${contact}" sudah terdaftar. Silakan langsung masuk pada tab Masuk Akun.`);
       return;
     }
 
@@ -198,11 +259,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
     const newIdPelanggan = '10' + randomCode;
 
+    const emailValue = isPhoneNumber
+      ? `${cleanPhone}@telepon.aetra`
+      : contact.toLowerCase();
+
     const newAccount: UserAccount = {
       id: 'acc-' + Date.now(),
       idPelanggan: newIdPelanggan,
       nama,
-      email,
+      email: emailValue,
+      telp: isPhoneNumber ? contact : undefined,
       password: pass,
       role: 'customer',
       createdAt: new Date().toISOString(),
@@ -216,7 +282,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
     try {
       localStorage.removeItem('aetra_draft_' + newIdPelanggan);
       localStorage.removeItem('aetra_draft_' + newAccount.id);
-      localStorage.removeItem('aetra_draft_' + email);
+      localStorage.removeItem('aetra_draft_' + emailValue);
       localStorage.removeItem('aetra_registration_form_draft');
       localStorage.removeItem('aetra_saved_applicant_data');
     } catch {
@@ -231,7 +297,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
     setIsLoading(false);
     setSuccessMessage(
-      `Pendaftaran akun pelanggan berhasil! ID Pelanggan Anda: ${newIdPelanggan}. Mengalihkan ke portal pelanggan...`
+      `Pendaftaran akun berhasil! Mengalihkan ke portal...`
     );
 
     setTimeout(() => {
@@ -327,7 +393,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Username
+                  Alamat Email / No. Telepon
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -337,7 +403,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     type="text"
                     value={loginIdentifier}
                     onChange={(e) => setLoginIdentifier(e.target.value)}
-                    placeholder="nama@email.com atau username admin"
+                    placeholder="nama@email.com atau 0812xxxx"
                     className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:border-[#005DAA] focus:ring-2 focus:ring-[#005DAA]/20 transition"
                     required
                   />
@@ -405,10 +471,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               </div>
             </form>
           ) : (
-            /* Form Daftar Akun Baru: STRICTLY Nama, Email, Password */
+            /* Form Daftar Akun Baru: STRICTLY Nama, Email / No. Telepon, Password */
             <form onSubmit={handleRegister} className="space-y-3.5">
               <div className="bg-blue-50/80 p-3 rounded-2xl border border-blue-200/80 text-[11px] text-blue-900 leading-relaxed">
-                Pendaftaran akun pelanggan baru cukup masukkan <strong>Nama Lengkap</strong>, <strong>Email</strong>, dan <strong>Kata Sandi</strong>. <em>ID Pelanggan resmi</em> akan otomatis diterbitkan oleh sistem loket Aetra.
+                Pendaftaran akun pelanggan baru cukup masukkan <strong>Nama Lengkap</strong>, <strong>Alamat Email / No. Telepon</strong>, dan <strong>Kata Sandi</strong>.
               </div>
 
               {/* 1. Nama */}
@@ -431,20 +497,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {/* 2. Email */}
+              {/* 2. Email / No. Telepon */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Alamat Email <span className="text-red-500">*</span>
+                  Alamat Email / No. Telepon <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Mail className="w-4 h-4" />
                   </div>
                   <input
-                    type="email"
+                    type="text"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="contoh: nama.pelanggan@gmail.com"
+                    placeholder="contoh: nama@gmail.com atau 08123456789"
                     className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-hidden focus:border-[#005DAA] focus:ring-2 focus:ring-[#005DAA]/20 transition"
                     required
                   />

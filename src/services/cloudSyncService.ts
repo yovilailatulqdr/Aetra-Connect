@@ -116,6 +116,39 @@ export const INITIAL_BILLS_DATA: MonthlyBillRecord[] = [
   },
 ];
 
+export const DEFAULT_ACCOUNTS: UserAccount[] = [
+  {
+    id: 'acc-admin',
+    idPelanggan: '10999999',
+    nama: 'Administrator Aetra Tangerang',
+    email: 'admin@aetra.co.id',
+    telp: '081199887766',
+    password: 'aetra123',
+    role: 'admin',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'acc-nabila',
+    idPelanggan: '10739182',
+    nama: 'Nabila Kusumaningsih',
+    email: 'nabilakusumaningsih@gmail.com',
+    telp: '081298765432',
+    password: '1234',
+    role: 'customer',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'acc-amara',
+    idPelanggan: '10928371',
+    nama: 'Amara Maharani',
+    email: 'amaramaharani@gmail.com',
+    telp: '081322334455',
+    password: '1234',
+    role: 'customer',
+    createdAt: new Date().toISOString(),
+  },
+];
+
 class CloudSyncService {
   private isSyncing = false;
   private syncListeners: Array<() => void> = [];
@@ -193,19 +226,21 @@ class CloudSyncService {
       if (survStr) surveys = JSON.parse(survStr);
     } catch { surveys = []; }
 
-    if (!Array.isArray(accounts) || accounts.length === 0) {
-      accounts = [
-        {
-          id: 'acc-admin',
-          idPelanggan: '10999999',
-          nama: 'Administrator Aetra Tangerang',
-          email: 'admin@aetra.co.id',
-          password: 'aetra123',
-          role: 'admin',
-          createdAt: new Date().toISOString(),
-        },
-      ];
-    }
+    if (!Array.isArray(accounts)) accounts = [];
+
+    // Ensure default accounts (Admin, Nabila, Amara) exist
+    DEFAULT_ACCOUNTS.forEach((defAcc) => {
+      const idx = accounts.findIndex(
+        (a) =>
+          (a.email && a.email.toLowerCase() === defAcc.email.toLowerCase()) ||
+          (a.idPelanggan && a.idPelanggan === defAcc.idPelanggan)
+      );
+      if (idx >= 0) {
+        accounts[idx] = { ...accounts[idx], ...defAcc };
+      } else {
+        accounts.push(defAcc);
+      }
+    });
 
     if (!Array.isArray(registrations) || registrations.length === 0) {
       registrations = [...INITIAL_REGISTRATIONS];

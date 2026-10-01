@@ -81,7 +81,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
   };
 
   // Status badge config
-  const getStepStatusBadge = (step: 1 | 2 | 3 | 4) => {
+  const getStepStatusBadge = (step: 1 | 2 | 3 | 4 | 5) => {
     switch (step) {
       case 1:
         return {
@@ -97,13 +97,19 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
         };
       case 3:
         return {
-          label: 'Tahap 3: Proses Pemasangan Pipa & Meter',
+          label: 'Tahap 3: SPKO & Pengerjaan Kontraktor',
           badgeClass: 'bg-orange-50 text-[#F37021] border-orange-200',
-          desc: 'Teknisi sedang melakukan instalasi fisik pipa dinas dan water meter',
+          desc: 'Tahap pengerjaan dari kontraktor untuk pipa dinas',
         };
       case 4:
         return {
-          label: 'Tahap 4: Sambungan Aktif & Air Mengalir',
+          label: 'Tahap 4: Pemasangan Meteran Pelanggan',
+          badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          desc: 'Teknisi memasang water meter dan segel kran resmi di persil',
+        };
+      case 5:
+        return {
+          label: 'Tahap 5: Sambungan Aktif & Air Mengalir',
           badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
           desc: 'Pemasangan rampung, meter aktif dan air bersih resmi mengalir',
         };
@@ -224,68 +230,74 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
     ? `${matchingReg.dataPasang.panjangPipa} Meter (${matchingReg.dataPasang.panjangPipaTipe || 'Standard'})`
     : (selectedRecord.panjangPipaDinas || '4.5 Meter (Standar s/d 6m)');
 
-  // Clean, authoritative, non-repetitive milestone history
+  // Clean, authoritative, non-repetitive milestone history (Hanya menampilkan tahap yang sudah dicapai)
   const milestones = React.useMemo(() => {
     if (!selectedRecord) return [];
 
     const regDate = selectedRecord.tanggalDaftar || '21 Sep 2026';
     const estDate = selectedRecord.estimasiSelesai || '26 Sep 2026';
+    const currentStepNum = selectedRecord.currentStep || 1;
 
-    return [
+    const allSteps = [
       {
         step: 1,
-        title: 'Pendaftaran & Verifikasi Berkas',
-        subtitle: 'Dokumen KTP, KK, & Data Permohonan',
-        description: `Formulir sambungan baru No. Form #${selectedRecord.noForm} (SR: ${selectedRecord.noSr}) berhasil didaftarkan dan berkas identitas pemohon telah diverifikasi lengkap. Petugas Surveyor: ${surveyorName}.`,
+        title: 'Verifikasi Berkas & Administrasi',
+        subtitle: 'Pengecekan Identitas, KTP & Lokasi Persil',
+        description: `Formulir permohonan sambungan baru (SR: ${selectedRecord.noSr}) berhasil didaftarkan dan berkas identitas pemohon telah diverifikasi lengkap oleh tim administrasi Aetra.`,
         date: regDate,
         time: '09:15 WIB',
-        actor: `Surveyor Wilayah (${surveyorName})`,
-        isCompleted: selectedRecord.currentStep >= 1,
-        isCurrent: selectedRecord.currentStep === 1,
+        actor: `Petugas Verifikator Administrasi (${surveyorName})`,
+        isCompleted: currentStepNum > 1,
+        isCurrent: currentStepNum === 1,
       },
       {
         step: 2,
-        title: 'Persetujuan Teknis & Pembayaran',
-        subtitle: 'Penetapan Biaya & Penerbitan SPKO',
-        description:
-          selectedRecord.currentStep >= 2
-            ? `Pembayaran biaya sambungan baru sebesar Rp ${(selectedRecord.biayaSambungan || 1371545).toLocaleString('id-ID')} telah diverifikasi Lunas. Surat Perintah Kerja Operasional (SPKO) resmi diterbitkan.`
-            : `Menunggu konfirmasi pelunasan biaya sambungan baru sebesar Rp ${(selectedRecord.biayaSambungan || 1371545).toLocaleString('id-ID')}. Pembayaran dapat dilakukan via transfer bank atau kasir resmi.`,
-        date: selectedRecord.currentStep >= 2 ? regDate : 'Tahap Berikutnya',
-        time: selectedRecord.currentStep >= 2 ? '14:20 WIB' : 'Menunggu Pelunasan',
-        actor: 'Billing & Keuangan Aetra',
-        isCompleted: selectedRecord.currentStep >= 2,
-        isCurrent: selectedRecord.currentStep === 2,
+        title: 'Persetujuan Teknis & Konfirmasi Pembayaran',
+        subtitle: 'Penetapan Golongan Tarif & Biaya Sambungan Baru',
+        description: `Pembayaran biaya sambungan baru sebesar Rp ${(selectedRecord.biayaSambungan || 1371545).toLocaleString('id-ID')} telah dikonfirmasi sah. Berkas disetujui untuk penerbitan SPKO fisik.`,
+        date: regDate,
+        time: '14:20 WIB',
+        actor: 'Billing & Keuangan PT Aetra Air Tangerang',
+        isCompleted: currentStepNum > 2,
+        isCurrent: currentStepNum === 2,
       },
       {
         step: 3,
-        title: 'Pemasangan Pipa Dinas & Meter Air',
-        subtitle: 'Pekerjaan Fisik & Instalasi Persil',
-        description:
-          selectedRecord.currentStep >= 3
-            ? `Pekerjaan penyambungan pipa dinas HDPE dan pemasangan unit water meter (${displayMeter || 'AET-2609-8472'}) di persil pelanggan telah selesai dikerjakan oleh teknisi ${teknisiName}.`
-            : `Pekerjaan fisik penyambungan pipa dinas ke persil pelanggan dan pemasangan water meter berstandar SNI oleh teknisi lapangan ${teknisiName}.`,
-        date: selectedRecord.currentStep >= 3 ? regDate : 'Tahap Berikutnya',
-        time: selectedRecord.currentStep >= 3 ? '10:00 WIB' : 'Jadwal Pemasangan',
-        actor: `Teknisi Lapangan (${teknisiName})`,
-        isCompleted: selectedRecord.currentStep >= 3,
-        isCurrent: selectedRecord.currentStep === 3,
+        title: 'Penerbitan SPKO & Tahap Pengerjaan dari Kontraktor',
+        subtitle: 'Penyambungan Pipa Dinas ke Jaringan Distribusi Utama',
+        description: `Surat Perintah Kerja Operasional (SPKO) diterbitkan. Tahap pengerjaan dari kontraktor mitra resmi Aetra untuk penarikan pipa dinas dan galian jalur sambungan.`,
+        date: regDate,
+        time: '10:00 WIB',
+        actor: `Kontraktor Rekanan Aetra (${teknisiName})`,
+        isCompleted: currentStepNum > 3,
+        isCurrent: currentStepNum === 3,
       },
       {
         step: 4,
-        title: 'Uji Pengaliran & Air Bersih Aktif',
-        subtitle: 'Pemasangan Segel Resmi & Siap Pakai',
-        description:
-          selectedRecord.currentStep === 4
-            ? `Uji coba tekanan dan debit air bersih berhasil. Segel kran resmi telah terpasang (${selectedRecord.nomorSegel || 'SGL-AAT-88192'}). Air bersih resmi aktif mengalir ke rumah Anda.`
-            : `Pengecekan debit aliran air dan pemasangan segel resmi kran meter air oleh pengawas distribusi. Estimasi target: ${estDate}.`,
-        date: selectedRecord.currentStep === 4 ? regDate : estDate,
-        time: selectedRecord.currentStep === 4 ? '15:30 WIB' : 'Estimasi Pengaliran',
-        actor: 'Pengawas Distribusi Air Bersih',
-        isCompleted: selectedRecord.currentStep === 4,
-        isCurrent: selectedRecord.currentStep === 4,
+        title: 'Pemasangan Meteran Pelanggan',
+        subtitle: 'Instalasi Water Meter SNI & Pemasangan Segel Resmi',
+        description: `Pekerjaan pemasangan meteran pelanggan (${displayMeter || 'AET-2609-8472'}) dan penguncian segel kran resmi (${displaySegel || 'SGL-AAT-88192'}) di persil rumah selesai dilaksanakan.`,
+        date: regDate,
+        time: '13:45 WIB',
+        actor: `Teknisi Pemasangan Meter (${teknisiName})`,
+        isCompleted: currentStepNum > 4,
+        isCurrent: currentStepNum === 4,
+      },
+      {
+        step: 5,
+        title: 'Air Bersih Mengalir & Pemasangan Selesai',
+        subtitle: 'Uji Tekanan Aliran & Sambungan Aktif Resmi',
+        description: `Uji coba tekanan dan debit air minum telah lulus uji standar Permenkes No. 492/2010. Air bersih resmi mengalir lancar dan ID Pelanggan aktif.`,
+        date: estDate,
+        time: '15:30 WIB',
+        actor: 'Pengawas Distribusi PT Aetra Air Tangerang',
+        isCompleted: currentStepNum >= 5,
+        isCurrent: currentStepNum === 5,
       },
     ];
+
+    // JANGAN tampilkan tahapan yang belum dilalui. Tampilkan HANYA tahapan yang sudah dilewati dan tahapan saat ini.
+    return allSteps.filter((item) => item.step <= currentStepNum);
   }, [selectedRecord]);
 
   return (
@@ -412,40 +424,48 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
             />
           </div>
 
-          {/* 4 Step Blocks */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 5 Step Blocks */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {[
               {
                 stepNum: 1,
-                title: '1. Pendaftaran Berkas',
-                desc: 'Verifikasi KTP & Data Pemohon',
+                title: '1. Verifikasi Berkas',
+                desc: 'Identitas & Dokumen Pemohon',
                 date: selectedRecord.steps[0]?.updatedAt || 'Selesai',
-                completed: selectedRecord.currentStep >= 1,
-                isCurrent: selectedRecord.currentStep === 1,
+                completed: (selectedRecord.currentStep || 1) >= 1,
+                isCurrent: (selectedRecord.currentStep || 1) === 1,
               },
               {
                 stepNum: 2,
-                title: '2. Pembayaran Biaya',
+                title: '2. Pembayaran',
                 desc: 'Pelunasan Biaya Pasang Resmi',
                 date: selectedRecord.steps[1]?.updatedAt || 'Menunggu',
-                completed: selectedRecord.currentStep >= 2,
-                isCurrent: selectedRecord.currentStep === 2,
+                completed: (selectedRecord.currentStep || 1) >= 2,
+                isCurrent: (selectedRecord.currentStep || 1) === 2,
               },
               {
                 stepNum: 3,
-                title: '3. Pemasangan Pipa',
-                desc: 'Instalasi Fisik & Meter Air',
+                title: '3. SPKO Kontraktor',
+                desc: 'Tahap pengerjaan dari kontraktor',
                 date: selectedRecord.steps[2]?.updatedAt || 'Menunggu',
-                completed: selectedRecord.currentStep >= 3,
-                isCurrent: selectedRecord.currentStep === 3,
+                completed: (selectedRecord.currentStep || 1) >= 3,
+                isCurrent: (selectedRecord.currentStep || 1) === 3,
               },
               {
                 stepNum: 4,
-                title: '4. Air Bersih Mengalir',
-                desc: 'Segel Resmi Terpasang & Aktif',
-                date: selectedRecord.steps[3]?.updatedAt || 'Estimasi',
-                completed: selectedRecord.currentStep === 4,
-                isCurrent: selectedRecord.currentStep === 4,
+                title: '4. Pasang Meteran',
+                desc: 'Pemasangan meteran pelanggan',
+                date: selectedRecord.steps[3]?.updatedAt || 'Menunggu',
+                completed: (selectedRecord.currentStep || 1) >= 4,
+                isCurrent: (selectedRecord.currentStep || 1) === 4,
+              },
+              {
+                stepNum: 5,
+                title: '5. Air Mengalir',
+                desc: 'Segel Resmi & Siap Pakai',
+                date: selectedRecord.estimasiSelesai || 'Estimasi',
+                completed: (selectedRecord.currentStep || 1) >= 5,
+                isCurrent: (selectedRecord.currentStep || 1) === 5,
               },
             ].map((item) => (
               <div

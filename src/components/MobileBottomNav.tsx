@@ -1,13 +1,14 @@
 import React from 'react';
-import { TabType, UserRole } from '../types';
+import { TabType, UserRole, RegistrationStatus } from '../types';
 import { 
-  FileText, 
-  Navigation, 
-  CreditCard, 
-  MessageSquareHeart, 
-  HelpCircle, 
+  FileSignature, 
+  Compass, 
+  ReceiptText, 
+  HeartHandshake, 
+  BookOpen, 
   Users, 
-  Sparkles 
+  MessageSquareHeart,
+  User
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
@@ -15,6 +16,7 @@ interface MobileBottomNavProps {
   setActiveTab: (tab: TabType) => void;
   userRole: UserRole;
   registeredCount: number;
+  customerStatus?: RegistrationStatus;
   adminSubTab?: 'registrations' | 'bills' | 'surveys';
   onSelectAdminSubTab?: (subTab: 'registrations' | 'bills' | 'surveys') => void;
 }
@@ -23,7 +25,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   activeTab,
   setActiveTab,
   userRole,
-  registeredCount,
+  registeredCount: _registeredCount,
+  customerStatus = 'NEW_USER',
   adminSubTab = 'registrations',
   onSelectAdminSubTab,
 }) => {
@@ -36,35 +39,75 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     isLive?: boolean;
   }
 
-  const customerTabs: TabItem[] = [
-    {
-      id: 'registration',
-      label: 'Daftar SR',
-      icon: FileText,
-    },
-    {
-      id: 'tracking',
-      label: 'Tracking',
-      icon: Navigation,
-      isLive: true,
-    },
-    {
-      id: 'billing',
-      label: 'Tagihan',
-      icon: CreditCard,
-      isCenter: true,
-    },
-    {
-      id: 'survey',
-      label: 'Survey',
-      icon: MessageSquareHeart,
-    },
-    {
-      id: 'faq',
-      label: 'Bantuan',
-      icon: HelpCircle,
-    },
-  ];
+  const getCustomerTabs = (): TabItem[] => {
+    if (customerStatus === 'ACTIVE_CUSTOMER') {
+      return [
+        {
+          id: 'registration',
+          label: 'Profil',
+          icon: User,
+        },
+        {
+          id: 'tracking',
+          label: 'Tracking',
+          icon: Compass,
+        },
+        {
+          id: 'billing',
+          label: 'Cek Tagihan',
+          icon: ReceiptText,
+          isCenter: true,
+        },
+        {
+          id: 'survey',
+          label: 'Survey',
+          icon: HeartHandshake,
+        },
+        {
+          id: 'faq',
+          label: 'Panduan',
+          icon: BookOpen,
+        },
+      ];
+    }
+
+    if (customerStatus === 'INSTALLATION_TRACKING') {
+      return [
+        {
+          id: 'registration',
+          label: 'Status',
+          icon: FileSignature,
+        },
+        {
+          id: 'tracking',
+          label: 'Tracking',
+          icon: Compass,
+          isCenter: true,
+          isLive: true,
+        },
+        {
+          id: 'faq',
+          label: 'Panduan',
+          icon: BookOpen,
+        },
+      ];
+    }
+
+    // NEW_USER / VERIFYING / WAITING_PAYMENT
+    return [
+      {
+        id: 'registration',
+        label: customerStatus === 'NEW_USER' ? 'Daftar SR' : 'Status',
+        icon: FileSignature,
+        isCenter: true,
+      },
+      {
+        id: 'faq',
+        label: 'Panduan',
+        icon: BookOpen,
+      },
+    ];
+  };
 
   const adminTabs: TabItem[] = [
     {
@@ -77,7 +120,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       id: 'admin',
       subTab: 'bills',
       label: 'Tagihan',
-      icon: CreditCard,
+      icon: ReceiptText,
       isCenter: true,
     },
     {
@@ -88,7 +131,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     },
   ];
 
-  const tabs = userRole === 'admin' ? adminTabs : customerTabs;
+  const tabs = userRole === 'admin' ? adminTabs : getCustomerTabs();
 
   return (
     <nav 
@@ -140,21 +183,22 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
           return (
             <button
-              key={`${tab.id}-${tab.subTab || 'tab'}`}
+              key={`${tab.id}-${tab.subTab || 'default'}`}
               type="button"
               onClick={handleTabClick}
-              className={`flex-1 py-1.5 flex flex-col items-center justify-center relative transition-all duration-150 cursor-pointer focus:outline-hidden active:scale-95 ${
-                isActive ? 'text-[#005DAA]' : 'text-slate-500 hover:text-slate-800'
+              className={`relative flex-1 py-1.5 flex flex-col items-center justify-center transition-colors group cursor-pointer ${
+                isActive ? 'text-[#005DAA]' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               <div className="relative">
                 <div
-                  className={`p-1 rounded-xl transition-colors ${
-                    isActive ? 'bg-blue-50 text-[#005DAA]' : 'text-slate-500'
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+                    isActive ? 'bg-blue-50 text-[#005DAA]' : 'group-hover:bg-slate-50'
                   }`}
                 >
-                  <Icon className="w-5 h-5 stroke-[2]" />
+                  <Icon className={`w-4.5 h-4.5 ${isActive ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
                 </div>
+
                 {tab.isLive && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -162,16 +206,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   </span>
                 )}
               </div>
+
               <span
-                className={`text-[10px] mt-0.5 tracking-tight truncate ${
+                className={`text-[10px] mt-0.5 transition-all truncate max-w-[64px] ${
                   isActive ? 'font-black text-[#005DAA]' : 'font-semibold text-slate-500'
                 }`}
               >
                 {tab.label}
               </span>
-              {isActive && (
-                <span className="w-4 h-0.5 bg-[#005DAA] rounded-full mt-0.5" />
-              )}
             </button>
           );
         })}

@@ -133,11 +133,127 @@ export const DOMESTIC_TARIFF_RULES: DomesticTariffRule[] = [
 ];
 
 export interface TariffCalculationResult {
-  code: 'R1' | 'R2' | 'R3' | 'R4';
+  code: 'R1' | 'R2' | 'R3' | 'R4' | '1 - Sosial' | '3 - Niaga/Usaha';
   name: string;
   appliedClause: string;
   allPoints: string[];
   color: string;
+}
+
+export interface BillSimulationResult {
+  code: string;
+  categoryName: string;
+  usageM3: number;
+  blok1: { m3: number; rate: number; total: number };
+  blok2: { m3: number; rate: number; total: number };
+  blok3: { m3: number; rate: number; total: number };
+  waterUsageCost: number;
+  meterMaintenanceFee: number;
+  adminFee: number;
+  totalEstimatedBill: number;
+}
+
+export const TARIFF_RATE_TABLE: Record<string, {
+  name: string;
+  b1Rate: number; // 0 - 10 m3
+  b2Rate: number; // 11 - 20 m3
+  b3Rate: number; // > 20 m3
+  maintenanceFee: number;
+  adminFee: number;
+}> = {
+  'R1': {
+    name: 'Rumah Tangga 1 (R1)',
+    b1Rate: 1050,
+    b2Rate: 1575,
+    b3Rate: 2450,
+    maintenanceFee: 12000,
+    adminFee: 3000,
+  },
+  'R2': {
+    name: 'Rumah Tangga 2 (R2)',
+    b1Rate: 2450,
+    b2Rate: 3675,
+    b3Rate: 5500,
+    maintenanceFee: 15000,
+    adminFee: 3000,
+  },
+  'R3': {
+    name: 'Rumah Tangga 3 (R3)',
+    b1Rate: 4250,
+    b2Rate: 6100,
+    b3Rate: 8400,
+    maintenanceFee: 20000,
+    adminFee: 3000,
+  },
+  'R4': {
+    name: 'Rumah Tangga 4 (R4)',
+    b1Rate: 6800,
+    b2Rate: 9500,
+    b3Rate: 12800,
+    maintenanceFee: 25000,
+    adminFee: 3000,
+  },
+  'SOSIAL': {
+    name: 'Sosial & Instansi',
+    b1Rate: 1050,
+    b2Rate: 1250,
+    b3Rate: 1750,
+    maintenanceFee: 10000,
+    adminFee: 3000,
+  },
+  'USAHA': {
+    name: 'Niaga & Usaha Komersil',
+    b1Rate: 8200,
+    b2Rate: 11400,
+    b3Rate: 15500,
+    maintenanceFee: 30000,
+    adminFee: 3000,
+  },
+};
+
+export function calculateWaterBillSimulation(
+  tariffCodeOrCategory: string,
+  usageM3: number = 15
+): BillSimulationResult {
+  let key = 'R2';
+  const upper = (tariffCodeOrCategory || '').toUpperCase();
+  if (upper.includes('R1')) key = 'R1';
+  else if (upper.includes('R2')) key = 'R2';
+  else if (upper.includes('R3')) key = 'R3';
+  else if (upper.includes('R4')) key = 'R4';
+  else if (upper.includes('SOSIAL') || upper.includes('INSTANSI') || upper.includes('IBADAH')) key = 'SOSIAL';
+  else if (upper.includes('USAHA') || upper.includes('NIAGA') || upper.includes('WARUNG') || upper.includes('TOKO')) key = 'USAHA';
+
+  const rateInfo = TARIFF_RATE_TABLE[key] || TARIFF_RATE_TABLE['R2'];
+  const m3 = Math.max(0, usageM3);
+
+  // Blok 1: 0 - 10 m3
+  const b1M3 = Math.min(m3, 10);
+  const b1Total = b1M3 * rateInfo.b1Rate;
+
+  // Blok 2: 11 - 20 m3
+  const b2M3 = m3 > 10 ? Math.min(m3 - 10, 10) : 0;
+  const b2Total = b2M3 * rateInfo.b2Rate;
+
+  // Blok 3: > 20 m3
+  const b3M3 = m3 > 20 ? m3 - 20 : 0;
+  const b3Total = b3M3 * rateInfo.b3Rate;
+
+  const waterUsageCost = b1Total + b2Total + b3Total;
+  const totalEstimatedBill = waterUsageCost + rateInfo.maintenanceFee + rateInfo.adminFee;
+
+  return {
+    code: key,
+    categoryName: rateInfo.name,
+    usageM3: m3,
+    blok1: { m3: b1M3, rate: rateInfo.b1Rate, total: b1Total },
+    blok2: { m3: b2M3, rate: rateInfo.b2Rate, total: b2Total },
+    blok3: { m3: b3M3, rate: rateInfo.b3Rate, total: b3Total },
+    waterUsageCost,
+    meterMaintenanceFee: rateInfo.maintenanceFee,
+    adminFee: rateInfo.adminFee,
+    totalEstimatedBill,
+  };
 }
 
 /**

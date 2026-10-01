@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { TabType, RegistrationFormData, CustomerTrackingRecord, SurveySubmission, UserRole, UserAccount, MonthlyBillRecord } from './types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { TabType, RegistrationFormData, CustomerTrackingRecord, TrackingTimelineEvent, SurveySubmission, UserRole, UserAccount, MonthlyBillRecord } from './types';
 import { 
   INITIAL_TRACKING_DATABASE, 
   INITIAL_FAQS, 
@@ -135,6 +135,36 @@ export default function App() {
 
   // Admin sub-tab state ('registrations' | 'bills' | 'surveys')
   const [adminSubTab, setAdminSubTab] = useState<'registrations' | 'bills' | 'surveys'>('registrations');
+
+  // Customer Status Workflow calculation based on registration record
+  const currentCustomerReg = useMemo(() => {
+    if (!currentUser || currentUser.role === 'admin') return null;
+    return (
+      registrations.find(
+        (r) =>
+          (currentUser.idPelanggan && r.idPelanggan === currentUser.idPelanggan) ||
+          (currentUser.id && (r as any).userId === currentUser.id) ||
+          (currentUser.email && r.email && r.email.toLowerCase() === currentUser.email.toLowerCase())
+      ) || null
+    );
+  }, [currentUser, registrations]);
+
+  const customerStatus = useMemo(() => {
+    if (!currentUser) return 'NEW_USER';
+    if (currentUser.role === 'admin') return 'ACTIVE_CUSTOMER';
+    if (!currentCustomerReg) return 'NEW_USER';
+    return (
+      currentCustomerReg.status_pendaftaran ||
+      currentCustomerReg.statusPendaftaran ||
+      (currentCustomerReg.trackingStep === 5
+        ? 'ACTIVE_CUSTOMER'
+        : currentCustomerReg.trackingStep >= 2
+        ? 'INSTALLATION_TRACKING'
+        : currentCustomerReg.nomorPembayaran
+        ? 'WAITING_PAYMENT'
+        : 'VERIFYING')
+    );
+  }, [currentUser, currentCustomerReg]);
 
   // Receipt Modal State
   const [receiptData, setReceiptData] = useState<RegistrationFormData | null>(null);
@@ -603,6 +633,144 @@ export default function App() {
     }
   };
 
+  const handleApproveRegistration = (noForm: string, nomorPembayaran: string, biayaSambungan: number, adminNotes?: string) => {
+    const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const nowTimeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+    setRegistrations((prev) =>
+      prev.map((reg) =>
+        reg.noForm === noForm
+          ? {
+              ...reg,
+              statusPendaftaran: 'WAITING_PAYMENT' as const,
+              status_pendaftaran: 'WAITING_PAYMENT' as const,
+              nomorPembayaran,
+              nomor_pembayaran: nomorPembayaran,
+              biayaSambungan,
+              trackingStep: 2,
+            }
+          : reg
+      )
+    );
+
+    setTrackingRecords((prev) =>
+      prev.map((rec) => {
+        if (rec.noForm !== noForm) return rec;
+
+        const updatedSteps = rec.steps.map((st) => {
+          if (st.step === 1) {
+            return {
+              ...st,
+              isCompleted: true,
+              isCurrent: false,
+              statusLabel: `Disetujui: ${todayStr}`,
+            };
+          } else if (st.step === 2) {
+            return {
+              ...st,
+              isCompleted: false,
+              isCurrent: true,
+              statusLabel: 'Menunggu Pembayaran',
+              notes: `Nomor Pembayaran Pelanggan: ${nomorPembayaran}. Silakan lakukan pembayaran via ATM/Indomaret/Alfamart.`,
+            };
+          }
+          return st;
+        });
+
+        const newLog: TrackingTimelineEvent = {
+          id: `log-approve-${Date.now()}`,
+          date: todayStr,
+          time: nowTimeStr,
+          title: 'Permohonan Disetujui Petugas - Nomor Pembayaran Diterbitkan',
+          description: adminNotes || `Berkas pemohon telah diverifikasi dan disetujui. Nomor Pembayaran resmi: ${nomorPembayaran} sebesar Rp ${biayaSambungan.toLocaleString('id-ID')}.`,
+          status: 'completed',
+          step: 2,
+          actor: 'Petugas Administrasi Aetra',
+          badge: 'Disetujui',
+        };
+
+        const updated: CustomerTrackingRecord = {
+          ...rec,
+          currentStep: 2,
+          nomorPembayaran,
+          biayaSambungan,
+          statusPembayaran: 'Menunggu Pembayaran',
+          steps: updatedSteps,
+          timelineEvents: [newLog, ...(rec.timelineEvents || [])],
+        };
+
+        cloudSyncService.saveTracking(updated);
+        saveTrackingRecordToDb(updated).catch((e) => console.warn(e));
+        return updated;
+      })
+    );
+
+    // Persist to local storage
+    try {
+      const saved = localStorage.getItem('aetra_registrations');
+      if (saved) {
+        const list: RegistrationFormData[] = JSON.parse(saved);
+        const updatedList = list.map((r) =>
+          r.noForm === noForm
+            ? {
+                ...r,
+                statusPendaftaran: 'WAITING_PAYMENT' as const,
+                status_pendaftaran: 'WAITING_PAYMENT' as const,
+                nomorPembayaran,
+                nomor_pembayaran: nomorPembayaran,
+                biayaSambungan,
+                trackingStep: 2,
+              }
+            : r
+        );
+        localStorage.setItem('aetra_registrations', JSON.stringify(updatedList));
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleRejectRegistration = (noForm: string, reason: string) => {
+    const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const nowTimeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+    setRegistrations((prev) =>
+      prev.map((reg) =>
+        reg.noForm === noForm
+          ? {
+              ...reg,
+              statusPendaftaran: 'NEW_USER' as any,
+              status_pendaftaran: 'NEW_USER' as any,
+              keteranganSkema: `Ditolak / Perlu Revisi: ${reason}`,
+            }
+          : reg
+      )
+    );
+
+    setTrackingRecords((prev) =>
+      prev.map((rec) => {
+        if (rec.noForm !== noForm) return rec;
+        const newLog: TrackingTimelineEvent = {
+          id: `log-reject-${Date.now()}`,
+          date: todayStr,
+          time: nowTimeStr,
+          title: 'Permohonan Ditolak / Perlu Revisi Berkas',
+          description: `Alasan: ${reason}`,
+          status: 'in_progress',
+          step: 1,
+          actor: 'Petugas Administrasi Aetra',
+          badge: 'Perlu Revisi',
+        };
+        const updated: CustomerTrackingRecord = {
+          ...rec,
+          timelineEvents: [newLog, ...(rec.timelineEvents || [])],
+        };
+        cloudSyncService.saveTracking(updated);
+        return updated;
+      })
+    );
+  };
+
   const handleImportRegistrations = (newRecords: RegistrationFormData[]) => {
     setRegistrations((prev) => {
       const existingForms = new Set(prev.map((r) => r.noForm));
@@ -819,6 +987,7 @@ export default function App() {
         setIsOpenMobile={setIsOpenMobile}
         userRole={userRole}
         currentUser={currentUser}
+        customerStatus={customerStatus}
         onLogout={handleLogout}
         onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
         onSwitchRole={(role) => {
@@ -890,6 +1059,8 @@ export default function App() {
               onChangeSubTab={setAdminSubTab}
               onUpdateTrackingStep={handleUpdateTrackingStep}
               onUpdateTechnicalData={handleUpdateTechnicalData}
+              onApproveRegistration={handleApproveRegistration}
+              onRejectRegistration={handleRejectRegistration}
               onDeleteRegistration={handleDeleteRegistration}
               onQuickDemoRegister={handleQuickDemoRegister}
               onNavigateToTracking={handleNavigateToTracking}
@@ -970,6 +1141,7 @@ export default function App() {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           userRole={userRole}
+          customerStatus={customerStatus}
           registeredCount={registrations.length}
           adminSubTab={adminSubTab}
           onSelectAdminSubTab={setAdminSubTab}

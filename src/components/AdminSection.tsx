@@ -50,6 +50,7 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { exportCustomersToExcel, downloadExcelTemplate, exportSurveysToExcel } from '../utils/excelService';
 import { ExcelImportModal } from './ExcelImportModal';
 import { AdminBillManagement } from './AdminBillManagement';
+import { AdminApprovalModal } from './AdminApprovalModal';
 import { cloudSyncService, INITIAL_BILLS_DATA } from '../services/cloudSyncService';
 
 interface AdminSectionProps {
@@ -68,6 +69,8 @@ interface AdminSectionProps {
       adminNotes?: string;
     }
   ) => void;
+  onApproveRegistration?: (noForm: string, nomorPembayaran: string, biayaSambungan: number, adminNotes?: string) => void;
+  onRejectRegistration?: (noForm: string, reason: string) => void;
   onViewReceipt?: (record: RegistrationFormData) => void;
   onNavigateToTracking: (noForm: string) => void;
   onDeleteRegistration?: (noForm: string) => void;
@@ -92,6 +95,8 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
   onChangeSubTab,
   onUpdateTrackingStep,
   onUpdateTechnicalData,
+  onApproveRegistration,
+  onRejectRegistration,
   onViewReceipt,
   onNavigateToTracking,
   onDeleteRegistration,
@@ -235,6 +240,9 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
   // Full Registration Record Modal State
   const [viewingFullRecord, setViewingFullRecord] = useState<(typeof combinedList)[0] | null>(null);
 
+  // Approval & Verification Modal State
+  const [approvingRecord, setApprovingRecord] = useState<RegistrationFormData | null>(null);
+
   // Edit Technical & Status Modal State
   const [editingRecord, setEditingRecord] = useState<{
     noForm: string;
@@ -354,40 +362,59 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
     setIsWaBlastModalOpen(true);
   };
 
-  const handleTriggerWaBlast = () => {
+  const handleLaunchManualWhatsApp = (targetCustomer: (typeof combinedList)[0], mode: 'web' | 'app' = 'web') => {
+    const phone = formatWaPhone(targetCustomer.telpHp);
+    const message = encodeURIComponent(getPersonalizedWaMessage(targetCustomer));
+    const url = mode === 'web'
+      ? `https://web.whatsapp.com/send?phone=${phone}&text=${message}`
+      : `https://api.whatsapp.com/send?phone=${phone}&text=${message}`;
+
+    const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+    setWaBlastHistory((prev) => ({
+      ...prev,
+      [targetCustomer.noForm]: nowStr,
+    }));
+
+    showToast(`Mengarahkan ke ${mode === 'web' ? 'WhatsApp Web' : 'Aplikasi WhatsApp'} untuk ${targetCustomer.namaKtp || 'Pelanggan'}...`);
+    
+    // Create an anchor and trigger click for clean navigation to WhatsApp
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleTriggerWaBlast = (mode: 'web' | 'app' = 'web') => {
     if (selectedWaRecipients.length === 0) {
       alert('Pilih minimal satu pelanggan penerima WA Blast.');
       return;
     }
 
-    setWaIsBlasting(true);
-    setWaProgress(15);
+    const selectedCustomers = paidCustomers.filter((c) => selectedWaRecipients.includes(c.noForm));
+    if (selectedCustomers.length === 0) return;
 
-    const interval = setInterval(() => {
-      setWaProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          setWaIsBlasting(false);
-          setWaProgress(100);
+    // Launch WhatsApp for the first customer and record history
+    const firstCustomer = selectedCustomers[0];
+    handleLaunchManualWhatsApp(firstCustomer, mode);
 
-          // Mark recipients as sent in blast history
-          const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-          setWaBlastHistory((prevHist) => {
-            const nextHist = { ...prevHist };
-            selectedWaRecipients.forEach((id) => {
-              nextHist[id] = nowStr;
-            });
-            return nextHist;
-          });
-
-          showToast(
-            `WA Blast berhasil dikirim ke ${selectedWaRecipients.length} pelanggan lunas via WhatsApp Gateway Aetra!`
-          );
-          return 100;
-        }
-        return prev + 25;
+    // Mark remaining in history with pending/sent flag
+    const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+    setWaBlastHistory((prevHist) => {
+      const nextHist = { ...prevHist };
+      selectedWaRecipients.forEach((id) => {
+        nextHist[id] = nowStr;
       });
-    }, 350);
+      return nextHist;
+    });
+
+    if (selectedCustomers.length > 1) {
+      showToast(
+        `Membuka WhatsApp untuk ${firstCustomer.namaKtp || 'Pelanggan 1'}. Gunakan tombol individual pada daftar target untuk mengirim ke pelanggan berikutnya.`
+      );
+    }
   };
 
   const handleOpenEditModal = (item: (typeof combinedList)[0]) => {
@@ -903,7 +930,18 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                           </td>
 
                           <td className="py-3.5 px-4 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                              {/* Quick Approve / Review Button */}
+                              <button
+                                type="button"
+                                onClick={() => setApprovingRecord(item)}
+                                title="Verifikasi & Setujui Permohonan ini serta Terbitkan Nomor Pembayaran"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition shadow-2xs cursor-pointer"
+                              >
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                <span>{item.currentStep === 1 ? 'Verifikasi & Setujui' : 'Atur No. Bayar'}</span>
+                              </button>
+
                               {/* View Full Registration Record Data */}
                               <button
                                 type="button"
@@ -2008,35 +2046,46 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                   </div>
                 )}
 
-                {/* Dispatch Trigger Buttons */}
+                {/* Dispatch Trigger Buttons (Manual WhatsApp Web & App Directing) */}
                 <div className="space-y-2 pt-1">
-                  <button
-                    type="button"
-                    disabled={waIsBlasting || selectedWaRecipients.length === 0}
-                    onClick={handleTriggerWaBlast}
-                    className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>
-                      {waIsBlasting
-                        ? 'Sedang Memproses Pengiriman...'
-                        : `Kirim WA Blast (${selectedWaRecipients.length} Pelanggan)`}
-                    </span>
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={selectedWaRecipients.length === 0}
+                      onClick={() => handleTriggerWaBlast('web')}
+                      className="py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="Buka percakapan di WhatsApp Web (web.whatsapp.com) untuk dikirim manual"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Buka WhatsApp Web</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={selectedWaRecipients.length === 0}
+                      onClick={() => handleTriggerWaBlast('app')}
+                      className="py-3 px-3 rounded-xl bg-[#005DAA] hover:bg-[#004A88] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="Buka percakapan di Aplikasi WhatsApp (wa.me / WhatsApp Desktop)"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Buka Aplikasi WA</span>
+                    </button>
+                  </div>
 
                   <button
                     type="button"
                     onClick={() => {
-                      if (paidCustomers.length > 0) {
-                        const sampleMsg = getPersonalizedWaMessage(paidCustomers[0]);
+                      const activeItem = paidCustomers.find((c) => selectedWaRecipients.includes(c.noForm)) || paidCustomers[0];
+                      if (activeItem) {
+                        const sampleMsg = getPersonalizedWaMessage(activeItem);
                         navigator.clipboard?.writeText(sampleMsg);
                         showToast('Teks pesan WhatsApp berhasil disalin ke clipboard!');
                       }
                     }}
-                    className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs border border-slate-200 transition flex items-center justify-center gap-1.5"
+                    className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Copy className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Salin Template Pesan</span>
+                    <span>Salin Teks Pesan ke Clipboard</span>
                   </button>
                 </div>
               </div>
@@ -2082,6 +2131,23 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
           </button>
         </div>
       )}
+
+      {/* Admin Approval & Billing Number Modal */}
+      <AdminApprovalModal
+        isOpen={Boolean(approvingRecord)}
+        record={approvingRecord}
+        onClose={() => setApprovingRecord(null)}
+        onApprove={(noForm, nomorPembayaran, biayaSambungan, adminNotes) => {
+          onApproveRegistration?.(noForm, nomorPembayaran, biayaSambungan, adminNotes);
+          showToast(`Permohonan No. Form #${noForm} berhasil DISETUJUI! Nomor Pembayaran ${nomorPembayaran} telah diterbitkan dan aktif.`);
+          setApprovingRecord(null);
+        }}
+        onReject={(noForm, reason) => {
+          onRejectRegistration?.(noForm, reason);
+          showToast(`Permohonan No. Form #${noForm} telah DITOLAK / Diberi Catatan Revisi.`);
+          setApprovingRecord(null);
+        }}
+      />
 
       {/* Excel Import Modal */}
       <ExcelImportModal
