@@ -133,7 +133,7 @@ export const DOMESTIC_TARIFF_RULES: DomesticTariffRule[] = [
 ];
 
 export interface TariffCalculationResult {
-  code: 'R1' | 'R2' | 'R3' | 'R4' | '1 - Sosial' | '3 - Niaga/Usaha';
+  code: 'R1' | 'R2' | 'R3' | 'R4' | '1 - Sosial' | '3 - Usaha';
   name: string;
   appliedClause: string;
   allPoints: string[];
@@ -202,7 +202,7 @@ export const TARIFF_RATE_TABLE: Record<string, {
     adminFee: 3000,
   },
   'USAHA': {
-    name: 'Niaga & Usaha Komersil',
+    name: 'Usaha',
     b1Rate: 8200,
     b2Rate: 11400,
     b3Rate: 15500,

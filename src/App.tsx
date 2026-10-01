@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { TabType, RegistrationFormData, CustomerTrackingRecord, TrackingTimelineEvent, SurveySubmission, UserRole, UserAccount, MonthlyBillRecord } from './types';
+import { TabType, RegistrationFormData, CustomerTrackingRecord, TrackingTimelineEvent, SurveySubmission, UserRole, UserAccount, MonthlyBillRecord, RegistrationStatus } from './types';
 import { 
   INITIAL_TRACKING_DATABASE, 
   INITIAL_FAQS, 
@@ -149,22 +149,32 @@ export default function App() {
     );
   }, [currentUser, registrations]);
 
-  const customerStatus = useMemo(() => {
+  const customerStatus: RegistrationStatus = useMemo(() => {
     if (!currentUser) return 'NEW_USER';
     if (currentUser.role === 'admin') return 'ACTIVE_CUSTOMER';
     if (!currentCustomerReg) return 'NEW_USER';
-    return (
-      currentCustomerReg.status_pendaftaran ||
-      currentCustomerReg.statusPendaftaran ||
-      (currentCustomerReg.trackingStep === 5
-        ? 'ACTIVE_CUSTOMER'
-        : currentCustomerReg.trackingStep >= 2
-        ? 'INSTALLATION_TRACKING'
-        : currentCustomerReg.nomorPembayaran
-        ? 'WAITING_PAYMENT'
-        : 'VERIFYING')
-    );
+    
+    const status = currentCustomerReg.status_pendaftaran || currentCustomerReg.statusPendaftaran;
+    if (status === 'ACTIVE_CUSTOMER' || currentCustomerReg.trackingStep >= 4) {
+      return 'ACTIVE_CUSTOMER';
+    }
+    if (status === 'PAYMENT_CONFIRMED' || currentCustomerReg.statusPembayaran === 'Menunggu Verifikasi Kasir' || currentCustomerReg.paymentProof) {
+      return 'PAYMENT_CONFIRMED';
+    }
+    if (status === 'WAITING_PAYMENT' || currentCustomerReg.nomorPembayaran || currentCustomerReg.trackingStep === 2) {
+      return 'WAITING_PAYMENT';
+    }
+    if (status === 'INSTALLATION_TRACKING' || currentCustomerReg.trackingStep === 3) {
+      return 'INSTALLATION_TRACKING';
+    }
+    return 'VERIFYING';
   }, [currentUser, currentCustomerReg]);
+
+  const isSidebarVisible = useMemo(() => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    return customerStatus === 'ACTIVE_CUSTOMER';
+  }, [currentUser, customerStatus]);
 
   // Receipt Modal State
   const [receiptData, setReceiptData] = useState<RegistrationFormData | null>(null);
@@ -976,39 +986,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 selection:bg-orange-100 selection:text-orange-900">
-      {/* Left Sidebar Navigation (4 core features) */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        adminSubTab={adminSubTab}
-        onSelectAdminSubTab={setAdminSubTab}
-        registeredCount={registrations.length}
-        isOpenMobile={isOpenMobile}
-        setIsOpenMobile={setIsOpenMobile}
-        userRole={userRole}
-        currentUser={currentUser}
-        customerStatus={customerStatus}
-        onLogout={handleLogout}
-        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
-        onSwitchRole={(role) => {
-          setUserRole(role);
-          if (role === 'admin') {
-            setActiveTab('admin');
-          } else if (activeTab === 'admin') {
-            setActiveTab('registration');
-          }
-        }}
-      />
-
-      {/* Main Content Column to the right of fixed sidebar on desktop */}
-      <div className="lg:pl-80 flex flex-col min-h-screen">
-        {/* Top Header */}
-        <Header
+      {/* Left Sidebar Navigation (Only visible for Admin or Active Customer with installed meter) */}
+      {isSidebarVisible && (
+        <Sidebar
           activeTab={activeTab}
-          onOpenMobileSidebar={() => setIsOpenMobile(true)}
+          setActiveTab={setActiveTab}
+          adminSubTab={adminSubTab}
+          onSelectAdminSubTab={setAdminSubTab}
           registeredCount={registrations.length}
+          isOpenMobile={isOpenMobile}
+          setIsOpenMobile={setIsOpenMobile}
           userRole={userRole}
           currentUser={currentUser}
+          customerStatus={customerStatus}
           onLogout={handleLogout}
           onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
           onSwitchRole={(role) => {
@@ -1020,34 +1010,61 @@ export default function App() {
             }
           }}
         />
+      )}
 
-        {/* Dedicated Mobile App Bar Header (Only visible on mobile screens) */}
-        <div className="lg:hidden px-3 pt-3 pb-1">
-          <div className="bg-linear-to-r from-[#005DAA] via-[#004B8A] to-[#003868] text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white font-bold text-sm shrink-0 border border-white/20 shadow-2xs">
-                {currentUser?.nama?.slice(0, 2).toUpperCase() || 'PL'}
+      {/* Main Content Column (Full width when sidebar is hidden, lg:pl-80 when sidebar is visible) */}
+      <div className={`${isSidebarVisible ? 'lg:pl-80' : 'w-full'} flex flex-col min-h-screen`}>
+        {/* Top Header */}
+        <Header
+          activeTab={activeTab}
+          onOpenMobileSidebar={() => setIsOpenMobile(true)}
+          registeredCount={registrations.length}
+          userRole={userRole}
+          currentUser={currentUser}
+          customerStatus={customerStatus}
+          isSidebarVisible={isSidebarVisible}
+          onLogout={handleLogout}
+          onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+          onSelectTab={(tab) => setActiveTab(tab)}
+          onSwitchRole={(role) => {
+            setUserRole(role);
+            if (role === 'admin') {
+              setActiveTab('admin');
+            } else if (activeTab === 'admin') {
+              setActiveTab('registration');
+            }
+          }}
+        />
+
+        {/* Dedicated Mobile App Bar Header (Only visible on mobile screens when sidebar is visible) */}
+        {isSidebarVisible && (
+          <div className="lg:hidden px-3 pt-3 pb-1">
+            <div className="bg-linear-to-r from-[#005DAA] via-[#004B8A] to-[#003868] text-white p-3.5 rounded-2xl shadow-xs flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white font-bold text-sm shrink-0 border border-white/20 shadow-2xs">
+                  {currentUser?.nama?.slice(0, 2).toUpperCase() || 'PL'}
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] text-blue-200 block leading-tight">
+                    {currentUser?.role === 'admin' ? 'Backoffice & Administrator' : 'Halo, Pelanggan Aetra'}
+                  </span>
+                  <span className="text-xs font-bold truncate block">{currentUser?.nama}</span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <span className="text-[10px] text-blue-200 block leading-tight">
-                  {currentUser?.role === 'admin' ? 'Backoffice & Administrator' : 'Halo, Pelanggan Aetra'}
+              <div className="text-right shrink-0">
+                <span className="text-[9px] uppercase tracking-wider text-blue-200 font-semibold block">
+                  {currentUser?.role === 'admin' ? 'Otoritas' : 'ID Pelanggan'}
                 </span>
-                <span className="text-xs font-bold truncate block">{currentUser?.nama}</span>
+                <span className="text-xs font-mono font-black text-amber-300 bg-white/10 px-2 py-0.5 rounded-lg border border-white/15 block">
+                  {currentUser?.role === 'admin' ? 'ADMIN' : (currentUser?.idPelanggan ? `#${currentUser.idPelanggan}` : 'Menunggu Pelunasan')}
+                </span>
               </div>
-            </div>
-            <div className="text-right shrink-0">
-              <span className="text-[9px] uppercase tracking-wider text-blue-200 font-semibold block">
-                {currentUser?.role === 'admin' ? 'Otoritas' : 'ID Pelanggan'}
-              </span>
-              <span className="text-xs font-mono font-black text-amber-300 bg-white/10 px-2 py-0.5 rounded-lg border border-white/15 block">
-                {currentUser?.role === 'admin' ? 'ADMIN' : `#${currentUser?.idPelanggan || '10842918'}`}
-              </span>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Main Content Modules */}
-        <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 pb-28 lg:pb-8">
+        <main className={`flex-1 w-full ${isSidebarVisible ? 'max-w-7xl' : 'max-w-5xl'} mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 pb-28 lg:pb-8`}>
           {activeTab === 'admin' && (
             <AdminSection
               registrations={registrations}
@@ -1082,6 +1099,11 @@ export default function App() {
               currentUser={currentUser}
               existingRegistrations={registrations}
               onViewReceipt={(record) => setReceiptData(record)}
+              onUpdateRegistration={(updatedReg) => {
+                setRegistrations((prev) =>
+                  prev.map((r) => (r.noForm === updatedReg.noForm ? updatedReg : r))
+                );
+              }}
             />
           )}
 

@@ -1,31 +1,29 @@
 import React from 'react';
-import { RegistrationFormData, PropertyPhoto } from '../types';
+import { RegistrationFormData } from '../types';
 import { 
-  UserCheck, 
-  Activity, 
   Wrench, 
-  Camera, 
-  Plus, 
-  Trash2, 
-  ImageIcon 
+  MapPin, 
+  Calendar, 
+  UserCheck, 
+  FileCheck2,
+  Layers,
+  Activity,
+  Ruler,
+  CheckCircle2,
+  HardHat,
+  Gauge
 } from 'lucide-react';
 
 interface PetugasOfficerFieldsProps {
   formData: RegistrationFormData;
   setFormData: React.Dispatch<React.SetStateAction<RegistrationFormData>>;
   errorFields?: Record<string, boolean>;
-  onOpenCamera: () => void;
-  onUploadPhotos: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRemovePhoto: (photoId: string) => void;
 }
 
 export const PetugasOfficerFields: React.FC<PetugasOfficerFieldsProps> = ({
   formData,
   setFormData,
   errorFields = {},
-  onOpenCamera,
-  onUploadPhotos,
-  onRemovePhoto,
 }) => {
   const updateDataPasang = (field: keyof RegistrationFormData['dataPasang'], value: any) => {
     setFormData((prev) => ({
@@ -45,372 +43,436 @@ export const PetugasOfficerFields: React.FC<PetugasOfficerFieldsProps> = ({
     updateDataPasang('dataGalian', updated);
   };
 
+  const dp = formData.dataPasang || {
+    namaSales: '',
+    tanggalSurvey: new Date().toISOString().split('T')[0],
+    noWorkOrder: '',
+    gpsLat: '-6.236600',
+    gpsLong: '106.562100',
+    namaKontraktor: 'PT Mitra Tirta Tangerang',
+    dataAlamat: 'Benar',
+    dataAlamatKoreksi: '',
+    dataJaringan: 'Ada Jaringan',
+    dataGalian: ['Tanah'],
+    luasBangunanSurvey: '28,9 - 70 m²',
+    kualitasBangunan: 'Permanen',
+    fotoProperti: 'Ada',
+    diameterPipa: '3/4 Inch',
+    panjangPipa: '6',
+    panjangPipaTipe: 'HDPE PE-100 PN16',
+    materialStatus: 'Standard',
+    materialTambahan: 'Kran Kuningan, Stop Kran Ball Valve',
+    tanggalPasangMeter: '',
+    noSegel: '',
+    noSeriMeter: '',
+  };
+
+  const galianOptions = [
+    'Tanah',
+    '< 28,8 m²',
+    'Coneblock',
+    'Aspal',
+    'Beton',
+    '1 - 2 m',
+    '< 1 m',
+  ];
+
+  const luasSurveyOptions = [
+    '< 28,8 m²',
+    '28,9 - 70 m²',
+    '71 - 120 m²',
+    '>120 m²',
+  ];
+
+  const kualitasOptions = [
+    'Non Permanen',
+    'Semi Permanen',
+    'Permanen',
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* 1. ADMINISTRASI & PETUGAS LAPANGAN */}
-      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
+    <div className="bg-sky-50/70 p-4 sm:p-6 rounded-2xl border-2 border-sky-200 shadow-xs space-y-6">
+      {/* Header Form Data Pasang Meter */}
+      <div className="bg-[#005DAA] text-white px-5 py-3.5 rounded-xl flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center text-amber-300">
+            <Wrench className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-black uppercase tracking-wide">
+              Data Pasang Meter &amp; Verifikasi Lapangan
+            </h3>
+            <p className="text-[11px] text-blue-100">
+              Formulir Administrasi Teknis Lapangan, Jalur Distribusi &amp; Spesifikasi Fisik Sambungan Baru
+            </p>
+          </div>
+        </div>
+        <span className="text-[10px] bg-white/20 text-white font-bold px-3 py-1 rounded-full shrink-0">
+          Portal Petugas
+        </span>
+      </div>
+
+      {/* 1. Identitas Petugas & Work Order */}
+      <div className="bg-white p-4 sm:p-5 rounded-xl border border-sky-200 shadow-2xs space-y-4">
+        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 text-xs font-bold text-slate-800">
           <UserCheck className="w-4 h-4 text-[#005DAA]" />
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-            1. Administrasi &amp; Petugas Lapangan
-          </h3>
+          <span>1. Identitas Petugas Lapangan &amp; Administrasi Survey</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Petugas Surveyor Lapangan <span className="text-red-500">*</span>
+            <label className="block text-xs font-bold text-slate-800 mb-1">
+              Nama Sales / Surveyor <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              value={formData.dataPasang?.namaSales || ''}
+              required
+              value={dp.namaSales || ''}
               onChange={(e) => updateDataPasang('namaSales', e.target.value)}
-              placeholder="Nama petugas survey"
-              className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-hidden ${
+              placeholder="Contoh: Bpk. Hendra Gunawan"
+              className={`w-full px-3.5 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:bg-white focus:outline-hidden ${
                 errorFields['dataPasang.namaSales'] ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:ring-2 focus:ring-[#005DAA]'
               }`}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Tanggal Survey Lapangan <span className="text-red-500">*</span>
+            <label className="block text-xs font-bold text-slate-800 mb-1">
+              Tanggal Survey <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
-              value={formData.dataPasang?.tanggalSurvey || formData.tanggal || ''}
-              onChange={(e) => updateDataPasang('tanggalSurvey', e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            />
+            <div className="relative">
+              <input
+                type="date"
+                required
+                value={dp.tanggalSurvey || ''}
+                onChange={(e) => updateDataPasang('tanggalSurvey', e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              No. Work Order / SPKO <span className="text-red-500">*</span>
+            <label className="block text-xs font-bold text-slate-800 mb-1">
+              No. Work Order (SPK / SPKO) <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              value={formData.dataPasang?.noWorkOrder || ''}
+              required
+              value={dp.noWorkOrder || ''}
               onChange={(e) => updateDataPasang('noWorkOrder', e.target.value)}
               placeholder="Contoh: WO-2026-AET-8810"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Titik Lokasi, Alamat & Koordinat GPS */}
+      <div className="bg-white p-4 sm:p-5 rounded-xl border border-sky-200 shadow-2xs space-y-4">
+        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 text-xs font-bold text-slate-800">
+          <MapPin className="w-4 h-4 text-[#005DAA]" />
+          <span>2. Titik Lokasi Pemasangan &amp; Verifikasi Alamat Fisik</span>
+        </div>
+
+        {/* Data Alamat Benar / Koreksi */}
+        <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+          <label className="block text-xs font-bold text-slate-800">
+            Kesesuaian Alamat dengan Titik Lapangan:
+          </label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <label className="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-lg border border-slate-200">
+              <input
+                type="radio"
+                name="dp_dataAlamat"
+                checked={dp.dataAlamat === 'Benar' || !dp.dataAlamatKoreksi}
+                onChange={() => {
+                  updateDataPasang('dataAlamat', 'Benar');
+                  updateDataPasang('dataAlamatKoreksi', '');
+                }}
+                className="text-[#005DAA] focus:ring-[#005DAA] w-4 h-4"
+              />
+              <span className="text-xs font-bold text-slate-800">Alamat Benar &amp; Sesuai Berkas</span>
+            </label>
+
+            <label className="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-lg border border-slate-200">
+              <input
+                type="radio"
+                name="dp_dataAlamat"
+                checked={dp.dataAlamat === 'Koreksi' || Boolean(dp.dataAlamatKoreksi)}
+                onChange={() => updateDataPasang('dataAlamat', 'Koreksi')}
+                className="text-[#005DAA] focus:ring-[#005DAA] w-4 h-4"
+              />
+              <span className="text-xs font-bold text-slate-800">Perlu Koreksi Alamat:</span>
+            </label>
+
+            {(dp.dataAlamat === 'Koreksi' || Boolean(dp.dataAlamatKoreksi)) && (
+              <input
+                type="text"
+                value={dp.dataAlamatKoreksi || ''}
+                onChange={(e) => {
+                  updateDataPasang('dataAlamat', 'Koreksi');
+                  updateDataPasang('dataAlamatKoreksi', e.target.value);
+                }}
+                placeholder="Tuliskan koreksi nama jalan / patokan persil lokasi..."
+                className="flex-1 px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* GPS Koordinat */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              GPS Latitude Titik Sambungan
+            </label>
+            <input
+              type="text"
+              value={dp.gpsLat || ''}
+              onChange={(e) => updateDataPasang('gpsLat', e.target.value)}
+              placeholder="-6.236600"
+              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              No. Kontak / WA Petugas
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              GPS Longitude Titik Sambungan
             </label>
             <input
               type="text"
-              value={formData.dataPasang?.telpPetugas || ''}
-              onChange={(e) => updateDataPasang('telpPetugas', e.target.value)}
-              placeholder="Contoh: 081299887766"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+              value={dp.gpsLong || ''}
+              onChange={(e) => updateDataPasang('gpsLong', e.target.value)}
+              placeholder="106.562100"
+              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
             />
           </div>
+        </div>
+      </div>
 
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Mitra Kontraktor Pelaksana <span className="text-red-500">*</span>
+      {/* 3. Jaringan Pipa Distribusi & Kontraktor */}
+      <div className="bg-white p-4 sm:p-5 rounded-xl border border-sky-200 shadow-2xs space-y-4">
+        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 text-xs font-bold text-slate-800">
+          <Activity className="w-4 h-4 text-[#005DAA]" />
+          <span>3. Kondisi Jaringan Distribusi Air &amp; Mitra Kontraktor Pelaksana</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
+            <label className="block text-xs font-bold text-slate-800 mb-2">
+              Ketersediaan Jaringan Pipa Aetra:
+            </label>
+            <div className="flex items-center gap-4">
+              <label className="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                <input
+                  type="radio"
+                  name="dp_dataJaringan"
+                  checked={dp.dataJaringan === 'Ada Jaringan' || dp.dataJaringan?.includes('Ada')}
+                  onChange={() => updateDataPasang('dataJaringan', 'Ada Jaringan')}
+                  className="text-[#005DAA] focus:ring-[#005DAA] w-4 h-4"
+                />
+                <span className="text-xs font-bold text-emerald-700">Ada Jaringan Pipa</span>
+              </label>
+
+              <label className="inline-flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                <input
+                  type="radio"
+                  name="dp_dataJaringan"
+                  checked={dp.dataJaringan === 'Tidak ada Jaringan' || dp.dataJaringan?.includes('Tidak')}
+                  onChange={() => updateDataPasang('dataJaringan', 'Tidak ada Jaringan')}
+                  className="text-[#005DAA] focus:ring-[#005DAA] w-4 h-4"
+                />
+                <span className="text-xs font-bold text-red-700">Tidak Ada Jaringan</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-800 mb-1">
+              Nama Mitra Kontraktor Pelaksana <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              value={formData.dataPasang?.namaKontraktor || ''}
+              required
+              value={dp.namaKontraktor || ''}
               onChange={(e) => updateDataPasang('namaKontraktor', e.target.value)}
               placeholder="Contoh: PT Mitra Tirta Tangerang"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
             />
           </div>
         </div>
       </div>
 
-      {/* 2. VERIFIKASI KONDISI LAPANGAN & JARINGAN PIPA */}
-      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
-          <Activity className="w-4 h-4 text-[#005DAA]" />
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-            2. Verifikasi Kondisi Lapangan &amp; Jaringan Pipa
-          </h3>
+      {/* 4. Data Galian & Dimensi */}
+      <div className="bg-white p-4 sm:p-5 rounded-xl border border-sky-200 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+            <HardHat className="w-4 h-4 text-[#005DAA]" />
+            <span>4. Data Galian &amp; Karakteristik Permukaan Jalur Pipa</span>
+          </div>
+          <span className="text-[10px] text-slate-500 font-semibold">Pilih salah satu atau lebih</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Koreksi / Catatan Alamat Lapangan
-            </label>
-            <input
-              type="text"
-              value={formData.dataPasang?.dataAlamatKoreksi || ''}
-              onChange={(e) => updateDataPasang('dataAlamatKoreksi', e.target.value)}
-              placeholder="Catatan persil khusus / patokan lokasi (opsional)"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            />
-          </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {galianOptions.map((opt) => {
+            const isChecked = (dp.dataGalian || []).includes(opt);
+            return (
+              <label
+                key={opt}
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold cursor-pointer transition ${
+                  isChecked
+                    ? 'bg-blue-50 border-[#005DAA] text-[#005DAA] ring-1 ring-[#005DAA]'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => handleGalianToggle(opt)}
+                  className="rounded text-[#005DAA] focus:ring-[#005DAA] w-4 h-4"
+                />
+                <span>{opt}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Status Jaringan Pipa Distribusi
-            </label>
-            <select
-              value={formData.dataPasang?.dataJaringan || 'Ada Jaringan Depan Persil'}
-              onChange={(e) => updateDataPasang('dataJaringan', e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            >
-              <option value="Ada Jaringan Depan Persil">Ada Jaringan Depan Persil</option>
-              <option value="Jaringan Seberang Jalan">Jaringan Seberang Jalan (Perlu Crossing)</option>
-              <option value="Perlu Perluasan Pipa Dinas">Perlu Perluasan Pipa Dinas (&gt; 6 meter)</option>
-            </select>
+      {/* 5. Hasil Survey Fisik Bangunan & Kualitas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Luas Bangunan Survey */}
+        <div className="bg-white p-4 rounded-xl border border-sky-200 shadow-2xs space-y-2.5">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800 pb-1.5 border-b border-slate-100">
+            <Ruler className="w-4 h-4 text-[#005DAA]" />
+            <span>Luas Bangunan (Hasil Survey)</span>
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Kualitas Bangunan Fisik
-            </label>
-            <select
-              value={formData.dataPasang?.kualitasBangunan || 'Permanen'}
-              onChange={(e) => updateDataPasang('kualitasBangunan', e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            >
-              <option value="Permanen">Permanen (Tembok Cor)</option>
-              <option value="Semi Permanen">Semi Permanen</option>
-              <option value="Bertingkat / Ruko">Bertingkat / Ruko Komersil</option>
-            </select>
+          <div className="grid grid-cols-2 gap-2">
+            {luasSurveyOptions.map((opt) => (
+              <label
+                key={opt}
+                className={`flex items-center justify-center p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition ${
+                  dp.luasBangunanSurvey === opt
+                    ? 'bg-blue-50 border-[#005DAA] text-[#005DAA] ring-2 ring-blue-200 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="dp_luasBangunanSurvey"
+                  checked={dp.luasBangunanSurvey === opt}
+                  onChange={() => updateDataPasang('luasBangunanSurvey', opt)}
+                  className="sr-only"
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
           </div>
+        </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Estimasi Tekanan Air di Titik Pasang
-            </label>
-            <select
-              value={formData.dataPasang?.materialStatus || 'Normal (0.7 - 1.0 Bar)'}
-              onChange={(e) => updateDataPasang('materialStatus', e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            >
-              <option value="Tinggi (> 1.0 Bar)">Tinggi (&gt; 1.0 Bar)</option>
-              <option value="Normal (0.7 - 1.0 Bar)">Normal (0.7 - 1.0 Bar)</option>
-              <option value="Rendah (< 0.7 Bar)">Rendah (&lt; 0.7 Bar)</option>
-            </select>
+        {/* Kualitas Bangunan */}
+        <div className="bg-white p-4 rounded-xl border border-sky-200 shadow-2xs space-y-2.5">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800 pb-1.5 border-b border-slate-100">
+            <Layers className="w-4 h-4 text-[#005DAA]" />
+            <span>Kualitas Bangunan</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {kualitasOptions.map((opt) => (
+              <label
+                key={opt}
+                className={`flex items-center justify-center p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition ${
+                  dp.kualitasBangunan === opt
+                    ? 'bg-blue-50 border-[#005DAA] text-[#005DAA] ring-2 ring-blue-200 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="dp_kualitasBangunan"
+                  checked={dp.kualitasBangunan === opt}
+                  onChange={() => updateDataPasang('kualitasBangunan', opt)}
+                  className="sr-only"
+                />
+                <span>{opt}</span>
+              </label>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* 3. SPESIFIKASI TEKNIS METER AIR, PIPA DINAS DAN GALIAN */}
-      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-200">
-          <Wrench className="w-4 h-4 text-[#005DAA]" />
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-            3. Spesifikasi Teknis Meter Air, Pipa Dinas &amp; Galian
-          </h3>
+      {/* 6. Spesifikasi Pipa Dinas & Meter Air */}
+      <div className="bg-white p-4 sm:p-5 rounded-xl border border-sky-200 shadow-2xs space-y-4">
+        <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 text-xs font-bold text-slate-800">
+          <Gauge className="w-4 h-4 text-[#005DAA]" />
+          <span>6. Spesifikasi Teknis Pipa Dinas &amp; Rencana Water Meter</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Diameter Pipa Dinas <span className="text-red-500">*</span>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Diameter Pipa Dinas
             </label>
             <select
-              value={formData.dataPasang?.diameterPipa || '1/2" (DN 15 mm)'}
+              value={dp.diameterPipa || '1/2 Inch'}
               onChange={(e) => updateDataPasang('diameterPipa', e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
             >
-              <option value='1/2" (DN 15 mm)'>1/2" (DN 15 mm) - Standar RT</option>
-              <option value='3/4" (DN 20 mm)'>3/4" (DN 20 mm)</option>
-              <option value='1" (DN 25 mm)'>1" (DN 25 mm)</option>
-              <option value='1.5" (DN 40 mm)'>1.5" (DN 40 mm)</option>
-              <option value='2" (DN 50 mm)'>2" (DN 50 mm) - Industri / Komersial</option>
+              <option value="1/2 Inch">1/2 Inch (Standar Domestik)</option>
+              <option value="3/4 Inch">3/4 Inch (Domestik Besar)</option>
+              <option value="1 Inch">1 Inch (Usaha / Niaga)</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               Panjang Pipa Dinas (Meter)
             </label>
             <input
               type="text"
-              value={formData.dataPasang?.panjangPipa || '6 Meter (Standar)'}
+              value={dp.panjangPipa || '6'}
               onChange={(e) => updateDataPasang('panjangPipa', e.target.value)}
-              placeholder="Contoh: 6 Meter"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+              placeholder="6"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Tipe Material Pipa Dinas
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Tipe Spesifikasi Pipa
             </label>
-            <select
-              value={formData.dataPasang?.panjangPipaTipe || 'HDPE PE-100 PN16'}
+            <input
+              type="text"
+              value={dp.panjangPipaTipe || 'HDPE PE-100 PN16'}
               onChange={(e) => updateDataPasang('panjangPipaTipe', e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            >
-              <option value="HDPE PE-100 PN16">HDPE PE-100 PN16 (Standar Aetra)</option>
-              <option value="PEX Pipeline">PEX Pipeline</option>
-              <option value="GI Medium Galvanis">GI Medium Galvanis</option>
-            </select>
+              placeholder="HDPE PE-100 PN16"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+            />
           </div>
+        </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Teknisi Instalatur <span className="text-red-500">*</span>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Material Aksesoris Standar
             </label>
             <input
               type="text"
-              value={formData.dataPasang?.namaTeknisi || ''}
-              onChange={(e) => updateDataPasang('namaTeknisi', e.target.value)}
-              placeholder="Nama teknisi pelaksana"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Nomor Seri Water Meter <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.dataPasang?.noSeriMeter || ''}
-              onChange={(e) => updateDataPasang('noSeriMeter', e.target.value)}
-              placeholder="Contoh: AET-2026-99120"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Nomor Segel Tera Meter <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.dataPasang?.noSegel || ''}
-              onChange={(e) => updateDataPasang('noSegel', e.target.value)}
-              placeholder="Contoh: SGL-88412"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Tanggal Pasang Meter Fisik <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              value={formData.dataPasang?.tanggalPasangMeter || formData.tanggal || ''}
-              onChange={(e) => updateDataPasang('tanggalPasangMeter', e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Material Tambahan / Aksesoris
-            </label>
-            <input
-              type="text"
-              value={formData.dataPasang?.materialTambahan || 'Box Meter + Valve + Check Valve'}
+              value={dp.materialTambahan || 'Kran Kuningan, Stop Kran Ball Valve, Box Meter'}
               onChange={(e) => updateDataPasang('materialTambahan', e.target.value)}
-              placeholder="Contoh: Box Meter + Valve"
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+              placeholder="Kran Kuningan, Stop Kran Ball Valve, Box Meter"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
             />
           </div>
-        </div>
 
-        {/* Checkbox Jenis Galian */}
-        <div className="pt-2 border-t border-slate-200">
-          <label className="block text-xs font-semibold text-slate-700 mb-2">
-            Rincian Jenis Galian / Pembongkaran Lapangan:
-          </label>
-          <div className="flex flex-wrap gap-2.5">
-            {['Tanah Biasa', 'Aspal Hotmix', 'Rabat Beton / Cor', 'Paving Block', 'Taman / Rumput'].map((galian) => {
-              const isChecked = (formData.dataPasang?.dataGalian || []).includes(galian);
-              return (
-                <label
-                  key={galian}
-                  onClick={() => handleGalianToggle(galian)}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition flex items-center gap-2 ${
-                    isChecked
-                      ? 'bg-blue-50 border-[#005DAA] text-[#005DAA]'
-                      : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => handleGalianToggle(galian)}
-                    className="text-[#005DAA] rounded focus:ring-[#005DAA]"
-                  />
-                  <span>{galian}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* 4. DOKUMENTASI LAPANGAN */}
-      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <Camera className="w-4 h-4 text-[#005DAA]" />
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                4. Dokumentasi Lapangan
-              </h3>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Foto tampak depan rumah, titik rencana water meter, jalur pipa persil, dan foto galian
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onOpenCamera}
-              className="px-3 py-1.5 rounded-xl bg-[#005DAA] hover:bg-[#004A88] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <Camera className="w-3.5 h-3.5" />
-              Ambil Foto Kamera
-            </button>
-            <label className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
-              <Plus className="w-3.5 h-3.5" />
-              Unggah Foto
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onUploadPhotos}
-                className="hidden"
-              />
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Status Kelayakan Teknis Lapangan
             </label>
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Memenuhi Syarat Teknis Sambungan Baru</span>
+            </div>
           </div>
         </div>
-
-        {formData.fotoPropertiFiles && formData.fotoPropertiFiles.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {formData.fotoPropertiFiles.map((photo: PropertyPhoto) => (
-              <div key={photo.id} className="relative group border rounded-xl overflow-hidden bg-white shadow-2xs">
-                <img src={photo.dataUrl} alt="Dokumentasi Lapangan" className="w-full aspect-video object-cover" />
-                <div className="p-2">
-                  <span className="text-[10px] text-slate-600 font-medium block truncate">{photo.caption || photo.name}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onRemovePhoto(photo.id)}
-                  className="absolute top-1 right-1 p-1 rounded-md bg-red-600 text-white hover:bg-red-700 cursor-pointer shadow-xs"
-                  title="Hapus Foto"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-6 border border-dashed border-slate-300 rounded-xl text-center bg-white">
-            <ImageIcon className="w-8 h-8 text-slate-300 mx-auto mb-1" />
-            <p className="text-xs font-semibold text-slate-600">Belum ada dokumentasi foto lapangan</p>
-            <p className="text-[10px] text-slate-400">Gunakan tombol di atas untuk mengambil atau mengunggah foto lokasi.</p>
-          </div>
-        )}
       </div>
     </div>
   );

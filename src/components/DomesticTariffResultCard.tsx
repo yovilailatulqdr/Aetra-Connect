@@ -81,11 +81,11 @@ export const DomesticTariffResultCard: React.FC<DomesticTariffResultCardProps> =
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-[#005DAA]" />
-          <span>Kategori Tarif Pelanggan Domestik (Otomatis Ditentukan Sistem)</span>
+          <span>Golongan Tarif Pelanggan (Otomatis Ditentukan Sistem)</span>
         </label>
         <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
           <Lock className="w-2.5 h-2.5 text-slate-500" />
-          Terkunci Otomatis (Sesuai SK Direksi Aetra)
+          Terkunci Otomatis
         </span>
       </div>
 
@@ -96,12 +96,12 @@ export const DomesticTariffResultCard: React.FC<DomesticTariffResultCardProps> =
             <span>Menunggu kelengkapan data fisik &amp; properti...</span>
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            Silakan isi <strong>Luas Bangunan Rumah</strong>, <strong>Jumlah Lantai</strong>, <strong>Kawasan Properti</strong>, dan <strong>Kegiatan Usaha</strong> di atas. Sistem secara otomatis akan menetapkan kategori golongan tarif Anda (<strong>R1</strong>, <strong>R2</strong>, <strong>R3</strong>, atau <strong>R4</strong>) sesuai SK Direksi PT Aetra Air Tangerang tanpa perlu dipilih manual.
+            Silakan isi <strong>Luas Bangunan Rumah</strong>, <strong>Jumlah Lantai</strong>, <strong>Kawasan Properti</strong>, dan <strong>Kegiatan Usaha</strong> di atas. Sistem secara otomatis akan menetapkan <strong>Golongan Tarif</strong> Anda (<strong>R1</strong>, <strong>R2</strong>, <strong>R3</strong>, atau <strong>R4</strong>) tanpa perlu dipilih manual.
           </p>
         </div>
       ) : (
         <div className={`p-4 sm:p-5 rounded-2xl border-2 shadow-sm transition-all duration-300 space-y-4 ${theme?.bg} ${theme?.border}`}>
-          {/* Header Row: Modern Category Logo Emblem & Status */}
+          {/* Header Row: Category Logo Emblem & Status */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <TariffCategoryLogo code={result.code} size="lg" />
@@ -112,32 +112,32 @@ export const DomesticTariffResultCard: React.FC<DomesticTariffResultCardProps> =
                     <span>{result.name}</span>
                   </span>
                   <span className="text-[11px] font-semibold text-slate-600">
-                    Golongan Tarif Domestik Resmi
+                    Golongan Tarif
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Ditetapkan otomatis berdasarkan parameter fisik bangunan &amp; peruntukan
+                  Ditetapkan otomatis berdasarkan parameter luas bangunan &amp; peruntukan
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 bg-white/95 px-3 py-1.5 rounded-xl border border-slate-200/90 shadow-2xs">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Validasi Algoritma Resmi Aetra</span>
+              <span>Validasi Skema Tarif</span>
             </div>
           </div>
 
-          {/* Clause Box: Persis seperti bunyi ketentuan pada SK resmi foto */}
+          {/* Clause Box */}
           <div className={`p-3 rounded-lg border text-xs space-y-1 ${theme?.clauseBg} ${theme?.clauseBorder}`}>
             <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-500">
-              Ketentuan &amp; Klausul Resmi yang Diberlakukan:
+              Klausul Penentuan Golongan Tarif:
             </span>
             <p className={`text-xs font-semibold leading-relaxed ${theme?.titleColor}`}>
               &bull; {result.appliedClause}
             </p>
           </div>
 
-          {/* Parameter Chips: Indikator dasar perhitungan */}
+          {/* Parameter Chips */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
             <div className="bg-white/80 p-2 rounded-lg border border-slate-200 flex items-center justify-between">
               <span className="text-slate-500">Total Luas Bangunan:</span>
@@ -156,7 +156,7 @@ export const DomesticTariffResultCard: React.FC<DomesticTariffResultCardProps> =
             <div className="bg-white/80 p-2 rounded-lg border border-slate-200 flex items-center justify-between">
               <span className="text-slate-500">Peruntukan Usaha:</span>
               <strong className="text-slate-900 font-bold">
-                {hasUsaha ? 'Memiliki Usaha' : 'Tanpa Usaha Komersil'}
+                {hasUsaha ? 'Memiliki Usaha' : 'Tanpa Usaha'}
               </strong>
             </div>
           </div>
@@ -164,7 +164,7 @@ export const DomesticTariffResultCard: React.FC<DomesticTariffResultCardProps> =
           {/* Locked Notice */}
           <div className="flex items-center gap-1.5 text-[10px] text-slate-500 pt-0.5">
             <Lock className="w-3 h-3 text-slate-400 shrink-0" />
-            <span>Kategori tarif ini terkunci otomatis oleh sistem agar sesuai dengan ketentuan resmi dan tidak dapat dirubah manual.</span>
+            <span>Golongan tarif ini terkunci otomatis oleh sistem agar sesuai dengan ketentuan dan tidak dapat dirubah manual.</span>
           </div>
         </div>
       )}

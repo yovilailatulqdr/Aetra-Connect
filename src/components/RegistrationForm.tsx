@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { RegistrationFormData, UploadedDoc, PropertyPhoto, UserAccount } from '../types';
+import { RegistrationFormData, UploadedDoc, PropertyPhoto, UserAccount, PaymentProofData } from '../types';
 import { AetraLogo } from './AetraLogo';
 import { 
   CheckCircle2, 
@@ -16,20 +16,23 @@ import {
   Info, 
   ArrowRight, 
   ArrowLeft, 
-  FileCheck,
-  CheckCheck,
-  Compass,
-  Landmark,
-  Store,
-  Clock,
-  Copy
+  CheckCheck, 
+  Compass, 
+  Clock, 
+  Copy,
+  Lock,
+  CreditCard,
+  Send,
+  ReceiptText
 } from 'lucide-react';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { InteractiveMapPicker } from './InteractiveMapPicker';
 import { calculateDomesticTariff } from '../data/domesticTariffs';
-import { INDONESIA_PROVINCES_DATA } from '../data/indonesiaRegions';
+import { INDONESIA_PROVINCES_DATA, AETRA_TANGERANG_INSTALLATION_REGIONS } from '../data/indonesiaRegions';
 import { BuildingEnvironmentFields } from './BuildingEnvironmentFields';
 import { PetugasOfficerFields } from './PetugasOfficerFields';
+import { DomesticTariffResultCard } from './DomesticTariffResultCard';
+import { saveRegistrationToDb } from '../services/supabaseService';
 
 export const SOSIAL_INSTANSI_OPTIONS = [
   'Tempat Ibadah',
@@ -70,7 +73,7 @@ export const getEmptyFormData = (user?: UserAccount | null): RegistrationFormDat
   id: 'reg-' + Date.now(),
   noSr: '',
   noForm: '',
-  idPelanggan: user?.idPelanggan || '',
+  idPelanggan: '',
   tanggal: new Date().toISOString().split('T')[0],
   namaKtp: user?.nama || '',
   noKtp: '',
@@ -90,8 +93,8 @@ export const getEmptyFormData = (user?: UserAccount | null): RegistrationFormDat
   desaPasang: '',
   kodePosPasang: '',
   kelurahanPasang: '',
-  kotaPasang: '',
-  provinsiPasang: '',
+  kotaPasang: 'Kabupaten Tangerang',
+  provinsiPasang: 'Banten',
   pekerjaan: '',
   statusKepemilikan: 'Rumah Sendiri',
   statusKepemilikanLainnya: '',
@@ -116,12 +119,12 @@ export const getEmptyFormData = (user?: UserAccount | null): RegistrationFormDat
     jumlahPenghuni: '4',
   },
   lingkungan: {
-    saluranPembuangan: 'Ada - Saluran Tertutup',
-    sanitasi: 'Baik & Memenuhi Syarat',
-    halaman: 'Ada Depan & Belakang',
-    lebarJalan: '4 - 6 Meter',
-    lingkunganTertata: 'Tertata & Teratur',
-    realEstate: 'Non Real Estate (Pemukiman Umum)',
+    saluranPembuangan: 'Ada',
+    sanitasi: 'Ada',
+    halaman: 'Ada',
+    lebarJalan: '> 4 m',
+    lingkunganTertata: 'Ya',
+    realEstate: 'Bukan',
   },
   dataPasang: {
     namaSales: 'Bpk. Hendra Gunawan (Surveyor)',
@@ -130,18 +133,18 @@ export const getEmptyFormData = (user?: UserAccount | null): RegistrationFormDat
     gpsLat: '-6.236600',
     gpsLong: '106.562100',
     namaKontraktor: 'PT Mitra Tirta Tangerang',
-    dataAlamat: '',
+    dataAlamat: 'Benar',
     dataAlamatKoreksi: '',
-    dataJaringan: 'Ada Jaringan Depan Persil',
-    dataGalian: ['Tanah Biasa'],
-    luasBangunanSurvey: '',
+    dataJaringan: 'Ada Jaringan',
+    dataGalian: ['Tanah'],
+    luasBangunanSurvey: '28,9 - 70 m²',
     kualitasBangunan: 'Permanen',
     fotoProperti: 'Ada',
-    diameterPipa: '1/2" (DN 15 mm)',
-    panjangPipa: '6 Meter (Standar)',
+    diameterPipa: '1/2 Inch',
+    panjangPipa: '6',
     panjangPipaTipe: 'HDPE PE-100 PN16',
-    materialTambahan: 'Box Meter + Valve + Check Valve',
-    materialStatus: 'Normal (0.7 - 1.0 Bar)',
+    materialTambahan: 'Kran Kuningan, Stop Kran Ball Valve, Box Meter',
+    materialStatus: 'Standard',
     tanggalPasangMeter: new Date().toISOString().split('T')[0],
     noSegel: 'SGL-' + Math.floor(10000 + Math.random() * 90000),
     noSeriMeter: 'AET-2026-' + Math.floor(10000 + Math.random() * 90000),
@@ -149,10 +152,10 @@ export const getEmptyFormData = (user?: UserAccount | null): RegistrationFormDat
     telpPetugas: '081299887766',
   },
   fotoPropertiFiles: [],
-  skemaPembayaran: 'Lakukan Pembayaran',
-  keteranganSkema: 'Lakukan Pembayaran',
+  skemaPembayaran: 'Pembayaran Penuh',
+  keteranganSkema: 'Pembayaran Penuh',
   biayaSambungan: 1371545,
-  golonganTarif: '2A1 - Rumah Tangga Standard',
+  golonganTarif: 'R2 = Rumah Tangga 2',
   persetujuan: false,
   trackingStep: 1,
   createdAt: new Date().toISOString(),
@@ -166,6 +169,7 @@ interface RegistrationFormProps {
   currentUser?: UserAccount | null;
   existingRegistrations?: RegistrationFormData[];
   onViewReceipt?: (record: RegistrationFormData) => void;
+  onUpdateRegistration?: (record: RegistrationFormData) => void;
 }
 
 export const RegistrationForm: React.FC<RegistrationFormProps> = ({ 
@@ -174,6 +178,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   currentUser,
   existingRegistrations,
   onViewReceipt,
+  onUpdateRegistration,
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [highestStepReached, setHighestStepReached] = useState<number>(1);
@@ -188,7 +193,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           return {
             ...getEmptyFormData(currentUser),
             ...parsed,
-            idPelanggan: currentUser?.idPelanggan || parsed.idPelanggan || '',
             namaKtp: parsed.namaKtp || currentUser?.nama || '',
             email: parsed.email || currentUser?.email || '',
           };
@@ -207,12 +211,30 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [errorFields, setErrorFields] = useState<Record<string, boolean>>({});
 
+  // Payment confirmation form state
+  const [paymentProofData, setPaymentProofData] = useState<{
+    bank: string;
+    namaPengirim: string;
+    noRekening: string;
+    tanggalBayar: string;
+    catatan: string;
+    fileUrl: string;
+  }>({
+    bank: 'BCA (Virtual Account)',
+    namaPengirim: '',
+    noRekening: '',
+    tanggalBayar: new Date().toISOString().split('T')[0],
+    catatan: '',
+    fileUrl: '',
+  });
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+
   const [cameraModalConfig, setCameraModalConfig] = useState<{
     isOpen: boolean;
-    targetType: 'document' | 'property';
+    targetType: 'document' | 'property' | 'payment';
     docKey?: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya';
     title: string;
-    guideType?: 'document' | 'property';
+    guideType?: 'document' | 'property' | 'payment';
   }>({
     isOpen: false,
     targetType: 'document',
@@ -248,7 +270,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     if (currentUser) {
       setFormData((prev) => ({
         ...prev,
-        idPelanggan: currentUser.idPelanggan || prev.idPelanggan,
         namaKtp: prev.namaKtp || currentUser.nama,
         email: prev.email || currentUser.email,
       }));
@@ -258,154 +279,216 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const [kategoriFungsi, setKategoriFungsi] = useState<KategoriFungsi>(() => {
     if (formData.fungsiBangunan) {
       if (SOSIAL_INSTANSI_OPTIONS.includes(formData.fungsiBangunan)) return 'sosial_instansi';
-      if (USAHA_OPTIONS.includes(formData.fungsiBangunan)) return 'usaha';
-      return 'rumah_tangga';
+      if (USAHA_OPTIONS.includes(formData.fungsiBangunan) || formData.fungsiBangunan === 'Usaha') return 'usaha';
     }
     return 'rumah_tangga';
   });
 
-  const handleSelectKategori = (cat: KategoriFungsi) => {
-    setKategoriFungsi(cat);
-    if (cat === 'rumah_tangga') {
+  // Calculate dynamic multi-floor tariff result
+  const calculatedTariff = useMemo(() => {
+    if (kategoriFungsi === 'sosial_instansi') {
+      return {
+        code: '1 - Sosial' as any,
+        name: 'Golongan 1 - Sosial',
+        appliedClause: 'Peruntukan tempat ibadah, asrama sosial, atau fasilitas umum nirlaba.',
+        allPoints: ['Fasilitas sosial murni', 'Tarif subsidi khusus pemerintah'],
+        color: 'emerald',
+      };
+    }
+    if (kategoriFungsi === 'usaha') {
+      return {
+        code: '3 - Usaha' as any,
+        name: 'Golongan 3 - Usaha',
+        appliedClause: 'Peruntukan kegiatan komersial, perdagangan, toko, ruko, atau industri kecil/menengah.',
+        allPoints: ['Kegiatan usaha komersil aktif', 'Tarif kategori usaha resmi Aetra'],
+        color: 'amber',
+      };
+    }
+
+    const baseLuas = parseFloat(String(formData.luasBangunan || '0'));
+    const floorCount = Math.max(1, parseInt(String(formData.kondisiBangunan?.jumlahLantai || '1'), 10) || 1);
+    const totalLuas = baseLuas * floorCount;
+
+    const isRealEstate = formData.lingkungan?.realEstate === 'Ya';
+    const hasUsaha = Boolean(formData.hasUsahaKomersil);
+
+    return calculateDomesticTariff(totalLuas, isRealEstate, hasUsaha);
+  }, [formData.luasBangunan, formData.kondisiBangunan?.jumlahLantai, formData.lingkungan?.realEstate, formData.hasUsahaKomersil, kategoriFungsi]);
+
+  useEffect(() => {
+    if (calculatedTariff) {
       setFormData((prev) => ({
         ...prev,
-        fungsiBangunan: 'Rumah Tangga',
-        golonganTarif: '2A1 - Rumah Tangga Standard',
-      }));
-    } else if (cat === 'sosial_instansi') {
-      const selected = SOSIAL_INSTANSI_OPTIONS.includes(formData.fungsiBangunan)
-        ? formData.fungsiBangunan
-        : SOSIAL_INSTANSI_OPTIONS[0];
-      setFormData((prev) => ({
-        ...prev,
-        fungsiBangunan: selected,
-        golonganTarif: '1 - Sosial & Instansi',
-      }));
-    } else if (cat === 'usaha') {
-      const selected = USAHA_OPTIONS.includes(formData.fungsiBangunan)
-        ? formData.fungsiBangunan
-        : USAHA_OPTIONS[0];
-      setFormData((prev) => ({
-        ...prev,
-        fungsiBangunan: selected,
-        golonganTarif: '3 - Niaga / Usaha',
+        golonganTarif: calculatedTariff.name,
+        kategoriTarifKlausul: calculatedTariff.appliedClause,
       }));
     }
+  }, [calculatedTariff]);
+
+  // Handle Payment Confirmation & Proof Upload
+  const handleConfirmPayment = () => {
+    if (!activeExistingRegistration) return;
+    if (!paymentProofData.fileUrl && !paymentProofData.bank) {
+      alert('Mohon pilih metode pembayaran dan upload foto bukti struk pembayaran.');
+      return;
+    }
+
+    setIsSubmittingPayment(true);
+    const proof: PaymentProofData = {
+      dataUrl: paymentProofData.fileUrl || '',
+      bank: paymentProofData.bank,
+      namaPengirim: paymentProofData.namaPengirim || activeExistingRegistration.namaKtp,
+      noRekening: paymentProofData.noRekening,
+      tanggalBayar: paymentProofData.tanggalBayar,
+      catatan: paymentProofData.catatan,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    const updatedRecord: RegistrationFormData = {
+      ...activeExistingRegistration,
+      status_pendaftaran: 'PAYMENT_CONFIRMED',
+      statusPendaftaran: 'PAYMENT_CONFIRMED',
+      statusPembayaran: 'Menunggu Verifikasi Kasir',
+      paymentProof: proof,
+    };
+
+    try {
+      const saved = localStorage.getItem('aetra_registrations');
+      const list: RegistrationFormData[] = saved ? JSON.parse(saved) : [];
+      const updatedList = list.map((r) => r.noForm === updatedRecord.noForm ? updatedRecord : r);
+      localStorage.setItem('aetra_registrations', JSON.stringify(updatedList));
+    } catch (e) {
+      console.warn('Storage sync error:', e);
+    }
+
+    saveRegistrationToDb(updatedRecord).catch((e) => console.warn(e));
+    if (onUpdateRegistration) {
+      onUpdateRegistration(updatedRecord);
+    }
+    setSubmittedRecord(updatedRecord);
+    setIsSubmittingPayment(false);
+    setNotification('Bukti pembayaran berhasil dikonfirmasi! Sedang diverifikasi oleh Kasir & Petugas Keuangan Aetra.');
+    setTimeout(() => setNotification(null), 5000);
   };
 
-  // Tariff calculation for Rumah Tangga
-  const tariffResult = useMemo(() => {
-    if (kategoriFungsi !== 'rumah_tangga') return null;
-    const luas = parseFloat(String(formData.luasBangunan || '0'));
-    const isRealEstate = (formData.lingkungan?.realEstate || '').toLowerCase().includes('real estate');
-    const hasUsaha = false;
-    return calculateDomesticTariff(luas, isRealEstate, hasUsaha);
-  }, [kategoriFungsi, formData.luasBangunan, formData.lingkungan?.realEstate]);
-
-  // Update golonganTarif when tariffResult updates
-  useEffect(() => {
-    if (kategoriFungsi === 'rumah_tangga' && tariffResult) {
-      setFormData((prev) => ({
-        ...prev,
-        golonganTarif: tariffResult.name,
-      }));
-    }
-  }, [kategoriFungsi, tariffResult]);
+  // Section Definitions
+  const SECTIONS = [
+    { number: 1, title: 'Data Diri', subtitle: 'Identitas & Kontak' },
+    { number: 2, title: 'Alamat KTP', subtitle: 'Domisili Kependudukan' },
+    { number: 3, title: 'Alamat Pasang', subtitle: 'Titik Sambungan Baru' },
+    { number: 4, title: 'Kondisi & Tarif', subtitle: 'Fisik & Golongan Tarif' },
+    { number: 5, title: 'Upload Dokumen', subtitle: 'KTP, KK, PBB & Foto Rumah' },
+    { number: 6, title: 'Portal Petugas', subtitle: 'Verifikasi & Persetujuan' },
+  ];
 
   const handleDocUpload = (
     docKey: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya',
     e: React.ChangeEvent<HTMLInputElement>,
-    source: 'camera' | 'file'
+    source: 'file' | 'camera' = 'file'
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const docInfo: UploadedDoc = {
-        id: 'doc-' + Date.now(),
-        name: file.name || `${docKey.toUpperCase()}_${source}.jpg`,
-        dataUrl,
-        source,
+      const uploadedDoc: UploadedDoc = {
+        id: `doc-${Date.now()}`,
+        name: file.name,
+        dataUrl: reader.result as string,
+        source: source,
         type: file.type,
-        size: (file.size / 1024).toFixed(1) + ' KB',
-        uploadedAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        uploadedAt: new Date().toISOString(),
       };
+
       setFormData((prev) => ({
         ...prev,
-        persyaratan: { ...prev.persyaratan, [docKey]: true },
-        persyaratanFiles: { ...(prev.persyaratanFiles || {}), [docKey]: docInfo },
+        persyaratan: {
+          ...prev.persyaratan,
+          [docKey]: true,
+        },
+        persyaratanFiles: {
+          ...prev.persyaratanFiles,
+          [docKey]: uploadedDoc,
+        },
       }));
-      setNotification(`Dokumen ${docKey.toUpperCase()} berhasil diunggah.`);
-      setTimeout(() => setNotification(null), 3000);
+
+      setErrorFields((prev) => ({ ...prev, [docKey + 'Doc']: false }));
     };
     reader.readAsDataURL(file);
-    e.target.value = '';
   };
 
   const handleRemoveDoc = (docKey: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya') => {
     setFormData((prev) => {
-      const updated = { ...(prev.persyaratanFiles || {}) };
-      delete updated[docKey];
+      const updatedFiles = { ...prev.persyaratanFiles };
+      delete updatedFiles[docKey];
       return {
         ...prev,
-        persyaratan: { ...prev.persyaratan, [docKey]: false },
-        persyaratanFiles: updated,
+        persyaratan: {
+          ...prev.persyaratan,
+          [docKey]: false,
+        },
+        persyaratanFiles: updatedFiles,
       };
     });
   };
 
-  const handleDirectCameraCapture = (dataUrl: string, fileName: string) => {
-    if (cameraModalConfig.targetType === 'document' && cameraModalConfig.docKey) {
-      const docKey = cameraModalConfig.docKey;
-      const docInfo: UploadedDoc = {
-        id: 'doc-' + Date.now(),
-        name: fileName,
-        dataUrl,
-        source: 'camera',
-        type: 'image/jpeg',
-        size: Math.round((dataUrl.length * 3) / 4 / 1024) + ' KB',
-        uploadedAt: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-      };
-      setFormData((prev) => ({
+  const handleDirectCameraCapture = (dataUrl: string) => {
+    if (cameraModalConfig.targetType === 'payment') {
+      setPaymentProofData((prev) => ({
         ...prev,
-        persyaratan: { ...prev.persyaratan, [docKey]: true },
-        persyaratanFiles: { ...(prev.persyaratanFiles || {}), [docKey]: docInfo },
+        fileUrl: dataUrl,
       }));
-      setNotification(`Foto dokumen ${docKey.toUpperCase()} berhasil diambil.`);
-    } else if (cameraModalConfig.targetType === 'property') {
+      setCameraModalConfig((prev) => ({ ...prev, isOpen: false }));
+      return;
+    }
+
+    if (cameraModalConfig.targetType === 'property') {
       const newPhoto: PropertyPhoto = {
-        id: 'photo-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-        name: fileName,
+        id: 'photo-' + Date.now(),
+        name: `Foto Properti Kamera ${new Date().toLocaleTimeString('id-ID')}`,
         dataUrl,
         source: 'camera',
-        caption: 'Dokumentasi Lapangan',
+        caption: 'Foto Tampak Rumah / Lokasi Titik Meter',
         timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       };
+
       setFormData((prev) => ({
         ...prev,
-        dataPasang: {
-          ...prev.dataPasang,
-          fotoProperti: 'Ada',
-        },
         fotoPropertiFiles: [...(prev.fotoPropertiFiles || []), newPhoto],
       }));
-      setNotification('Dokumentasi foto lapangan berhasil ditambahkan.');
+      setCameraModalConfig((prev) => ({ ...prev, isOpen: false }));
+      return;
     }
-    setTimeout(() => setNotification(null), 3500);
+
+    if (cameraModalConfig.docKey) {
+      const docKey = cameraModalConfig.docKey;
+      const uploadedDoc: UploadedDoc = {
+        id: `doc-${Date.now()}`,
+        name: `Kamera-${docKey.toUpperCase()}-${Date.now()}.jpg`,
+        dataUrl: dataUrl,
+        source: 'camera',
+        type: 'image/jpeg',
+        size: '1.2 MB',
+        uploadedAt: new Date().toISOString(),
+      };
+
+      setFormData((prev) => ({
+        ...prev,
+        persyaratan: {
+          ...prev.persyaratan,
+          [docKey]: true,
+        },
+        persyaratanFiles: {
+          ...prev.persyaratanFiles,
+          [docKey]: uploadedDoc,
+        },
+      }));
+      setErrorFields((prev) => ({ ...prev, [docKey + 'Doc']: false }));
+    }
+    setCameraModalConfig((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // Section Steps Configuration
-  const SECTIONS = [
-    { number: 1, title: 'Data Diri', subtitle: 'Identitas Pemohon', icon: User },
-    { number: 2, title: 'Alamat KTP', subtitle: 'Domisili Identitas', icon: MapPin },
-    { number: 3, title: 'Alamat Pemasangan', subtitle: 'Titik Sambungan Baru', icon: Home },
-    { number: 4, title: 'Informasi Bangunan', subtitle: 'Fungsi & Lingkungan', icon: Building2 },
-    { number: 5, title: 'Upload Dokumen', subtitle: 'KTP & Berkas', icon: Upload },
-    { number: 6, title: 'Petugas Lapangan', subtitle: 'Teknis & Persetujuan', icon: ShieldCheck },
-  ];
-
-  // Comprehensive Required (*)-fields validation
   const validateCurrentSection = (stepNum: number): boolean => {
     const errors: string[] = [];
     const fields: Record<string, boolean> = {};
@@ -416,28 +499,28 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         fields.noSr = true;
       }
       if (!formData.namaKtp?.trim()) {
-        errors.push('Nama Lengkap sesuai KTP wajib diisi');
+        errors.push('Nama Lengkap (Sesuai KTP) wajib diisi');
         fields.namaKtp = true;
       }
-      if (!formData.noKtp?.trim() || formData.noKtp.replace(/\D/g, '').length < 8) {
-        errors.push('Nomor KTP (NIK) minimal 8-16 digit angka');
+      if (!formData.noKtp?.trim()) {
+        errors.push('Nomor KTP (NIK 16 Digit) wajib diisi');
         fields.noKtp = true;
       }
       if (!formData.pekerjaan?.trim()) {
-        errors.push('Pekerjaan pemohon wajib diisi');
+        errors.push('Pekerjaan Pemohon wajib diisi');
         fields.pekerjaan = true;
       }
       if (!formData.telpHp?.trim()) {
-        errors.push('No. Telepon / WhatsApp aktif wajib diisi');
+        errors.push('Nomor HP / WhatsApp aktif wajib diisi');
         fields.telpHp = true;
       }
     } else if (stepNum === 2) {
       if (!formData.alamatKtp?.trim()) {
-        errors.push('Alamat sesuai KTP wajib diisi');
+        errors.push('Alamat Lengkap KTP wajib diisi');
         fields.alamatKtp = true;
       }
       if (!formData.rtRwKtp?.trim()) {
-        errors.push('RT / RW sesuai KTP wajib diisi');
+        errors.push('RT / RW KTP wajib diisi');
         fields.rtRwKtp = true;
       }
       if (!formData.provinsiKtp?.trim()) {
@@ -462,35 +545,27 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       }
     } else if (stepNum === 3) {
       if (!formData.alamatPasang?.trim()) {
-        errors.push('Alamat lokasi pemasangan sambungan baru wajib diisi');
+        errors.push('Alamat Lengkap Pemasangan wajib diisi');
         fields.alamatPasang = true;
       }
       if (!formData.rtRwPasang?.trim()) {
-        errors.push('RT / RW lokasi pemasangan wajib diisi');
+        errors.push('RT / RW Pemasangan wajib diisi');
         fields.rtRwPasang = true;
       }
-      if (!formData.provinsiPasang?.trim()) {
-        errors.push('Provinsi lokasi pemasangan wajib dipilih');
-        fields.provinsiPasang = true;
-      }
-      if (!formData.kotaPasang?.trim()) {
-        errors.push('Kota / Kabupaten lokasi pemasangan wajib dipilih');
-        fields.kotaPasang = true;
-      }
       if (!formData.kecamatanPasang?.trim()) {
-        errors.push('Kecamatan pemasangan wajib dipilih');
+        errors.push('Kecamatan Pemasangan di Kabupaten Tangerang wajib dipilih');
         fields.kecamatanPasang = true;
       }
       if (!formData.kelurahanPasang?.trim() && !formData.desaPasang?.trim()) {
-        errors.push('Kelurahan / Desa pemasangan wajib dipilih');
+        errors.push('Kelurahan / Desa Pemasangan wajib dipilih');
         fields.kelurahanPasang = true;
       }
       if (!formData.kodePosPasang?.trim()) {
-        errors.push('Kode Pos pemasangan wajib diisi');
+        errors.push('Kode Pos Pemasangan wajib diisi');
         fields.kodePosPasang = true;
       }
       if (!formData.statusKepemilikan?.trim()) {
-        errors.push('Status kepemilikan properti wajib dipilih');
+        errors.push('Status Kepemilikan Bangunan wajib dipilih');
         fields.statusKepemilikan = true;
       }
     } else if (stepNum === 4) {
@@ -530,18 +605,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         errors.push('Mitra Kontraktor Pelaksana wajib diisi');
         fields['dataPasang.namaKontraktor'] = true;
       }
-      if (!formData.dataPasang?.namaTeknisi?.trim()) {
-        errors.push('Teknisi Instalatur wajib diisi');
-        fields['dataPasang.namaTeknisi'] = true;
-      }
-      if (!formData.dataPasang?.noSeriMeter?.trim()) {
-        errors.push('Nomor Seri Water Meter wajib diisi');
-        fields['dataPasang.noSeriMeter'] = true;
-      }
-      if (!formData.dataPasang?.noSegel?.trim()) {
-        errors.push('Nomor Segel Tera Meter wajib diisi');
-        fields['dataPasang.noSegel'] = true;
-      }
       if (!formData.persetujuan) {
         errors.push('Wajib menyetujui Pernyataan & Ketentuan Berlangganan PT Aetra Air Tangerang');
         fields.persetujuan = true;
@@ -553,30 +616,16 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     return errors.length === 0;
   };
 
-  // Check if all required fields across all sections are valid
   const isAllRequiredFieldsFilled = useMemo(() => {
-    // Section 1
     const s1 = Boolean(formData.noSr?.trim() && formData.namaKtp?.trim() && formData.noKtp?.trim() && formData.pekerjaan?.trim() && formData.telpHp?.trim());
-    // Section 2
     const s2 = Boolean(formData.alamatKtp?.trim() && formData.rtRwKtp?.trim() && formData.provinsiKtp?.trim() && formData.kotaKtp?.trim() && formData.kecamatanKtp?.trim() && (formData.kelurahanKtp?.trim() || formData.desaKtp?.trim()) && formData.kodePosKtp?.trim());
-    // Section 3
-    const s3 = Boolean(formData.alamatPasang?.trim() && formData.rtRwPasang?.trim() && formData.provinsiPasang?.trim() && formData.kotaPasang?.trim() && formData.kecamatanPasang?.trim() && (formData.kelurahanPasang?.trim() || formData.desaPasang?.trim()) && formData.kodePosPasang?.trim() && formData.statusKepemilikan?.trim());
-    // Section 4
+    const s3 = Boolean(formData.alamatPasang?.trim() && formData.rtRwPasang?.trim() && formData.kecamatanPasang?.trim() && (formData.kelurahanPasang?.trim() || formData.desaPasang?.trim()) && formData.kodePosPasang?.trim() && formData.statusKepemilikan?.trim());
     let s4 = Boolean(formData.fungsiBangunan?.trim());
     if (kategoriFungsi === 'rumah_tangga') {
       s4 = s4 && Boolean(formData.luasBangunan && Number(formData.luasBangunan) > 0 && formData.luasTanah && Number(formData.luasTanah) > 0 && formData.kondisiBangunan?.jumlahLantai && formData.kondisiBangunan?.jumlahPenghuni);
     }
-    // Section 5
     const s5 = Boolean(formData.persyaratan?.ktp || formData.persyaratanFiles?.ktp);
-    // Section 6
-    const s6 = Boolean(
-      formData.dataPasang?.namaSales?.trim() &&
-      formData.dataPasang?.namaKontraktor?.trim() &&
-      formData.dataPasang?.namaTeknisi?.trim() &&
-      formData.dataPasang?.noSeriMeter?.trim() &&
-      formData.dataPasang?.noSegel?.trim() &&
-      formData.persetujuan
-    );
+    const s6 = Boolean(formData.dataPasang?.namaSales?.trim() && formData.dataPasang?.namaKontraktor?.trim() && formData.persetujuan);
 
     return s1 && s2 && s3 && s4 && s5 && s6;
   }, [formData, kategoriFungsi]);
@@ -622,16 +671,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     if (!isAllRequiredFieldsFilled) return;
 
     const noFormVal = formData.noForm || Math.floor(100000 + Math.random() * 900000).toString();
-    const idPelVal = formData.idPelanggan || currentUser?.idPelanggan || ('10' + Math.floor(100000 + Math.random() * 900000));
     const noSrVal = formData.noSr || Math.floor(100000 + Math.random() * 900000).toString();
 
+    // ID Pelanggan is NOT generated yet upon initial registration. Only issued upon payment approval & meter installation.
     const finalizedRecord: RegistrationFormData = {
       ...formData,
       noForm: noFormVal,
-      idPelanggan: idPelVal,
       noSr: noSrVal,
+      idPelanggan: '', // Dilengkapi nanti setelah pembayaran & meter terpasang
       statusPendaftaran: 'VERIFYING',
       status_pendaftaran: 'VERIFYING',
+      statusPembayaran: 'Belum Ditagihkan',
       isSkAccepted: true,
       is_sk_accepted: true,
       trackingStep: 1,
@@ -668,6 +718,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     }
   };
 
+  const isApprovedPaymentStage = activeExistingRegistration && (
+    activeExistingRegistration.status_pendaftaran === 'WAITING_PAYMENT' ||
+    activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED' ||
+    Boolean(activeExistingRegistration.nomorPembayaran)
+  );
+
+  const isCompletedStage = activeExistingRegistration && (
+    activeExistingRegistration.status_pendaftaran === 'ACTIVE_CUSTOMER' ||
+    activeExistingRegistration.trackingStep >= 4
+  );
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -678,14 +739,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         </div>
       )}
 
-      {/* JIKA PELANGGAN SUDAH MELAKUKAN PENDAFTARAN RESMI */}
+      {/* ======================================================== */}
+      {/* POST-REGISTRATION & PAYMENT STATUS CARD                  */}
+      {/* ======================================================== */}
       {activeExistingRegistration && !forceShowForm ? (
         <div className="bg-white rounded-2xl border-2 border-blue-400 shadow-xl p-6 sm:p-8 space-y-6 animate-in fade-in">
           {/* Main Notice Header */}
           <div className="bg-linear-to-r from-blue-50 via-sky-50 to-amber-50 border border-blue-200 rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-xs">
             <div className="flex items-start gap-4">
               <div className="w-13 h-13 rounded-2xl bg-[#005DAA] text-white flex items-center justify-center shadow-md shrink-0 mt-0.5">
-                <Clock className="w-7 h-7 text-amber-300 animate-pulse" />
+                {isCompletedStage ? (
+                  <CheckCircle2 className="w-7 h-7 text-emerald-300" />
+                ) : isApprovedPaymentStage ? (
+                  <CreditCard className="w-7 h-7 text-amber-300 animate-bounce" />
+                ) : (
+                  <Clock className="w-7 h-7 text-amber-300 animate-pulse" />
+                )}
               </div>
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
@@ -694,73 +763,273 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   </span>
                   <span className={`text-[10px] uppercase font-black tracking-wider px-3 py-0.5 rounded-full border ${
                     activeExistingRegistration.status_pendaftaran === 'WAITING_PAYMENT'
-                      ? 'bg-amber-100 text-amber-800 border-amber-300'
-                      : activeExistingRegistration.status_pendaftaran === 'INSTALLATION_TRACKING'
-                      ? 'bg-purple-100 text-purple-800 border-purple-300'
-                      : activeExistingRegistration.status_pendaftaran === 'ACTIVE_CUSTOMER'
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                      : 'bg-sky-100 text-[#005DAA] border-sky-300'
+                      ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+                      : activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED'
+                      ? 'bg-purple-100 text-purple-900 border-purple-300 font-bold'
+                      : isCompletedStage
+                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
+                      : 'bg-sky-100 text-[#005DAA] border-sky-300 font-bold'
                   }`}>
                     {activeExistingRegistration.status_pendaftaran === 'WAITING_PAYMENT'
-                      ? 'Disetujui Admin • Menunggu Pembayaran'
-                      : activeExistingRegistration.status_pendaftaran === 'INSTALLATION_TRACKING'
-                      ? 'Tahap 3 • Dalam Pengerjaan Pipa & Meter'
-                      : activeExistingRegistration.status_pendaftaran === 'ACTIVE_CUSTOMER'
-                      ? 'Tahap 4 • Sambungan Resmi Aktif'
+                      ? 'Tahap 2: Permohonan Disetujui • Menunggu Pembayaran'
+                      : activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED'
+                      ? 'Tahap 2: Bukti Pembayaran Terkirim • Verifikasi Kasir'
+                      : isCompletedStage
+                      ? 'Tahap 4: Pembayaran Lunas & Meteran Air Terpasang Aktif'
                       : 'Tahap 1: Dalam Tahap Verifikasi Petugas'}
                   </span>
                 </div>
 
                 <h2 className="text-lg sm:text-xl font-black text-slate-900 leading-snug">
-                  Proses Pendaftaran Anda Sedang Dalam Tahap Verifikasi Petugas
+                  {isCompletedStage
+                    ? 'Selamat! Sambungan Air Bersih Aetra Anda Telah Resmi Aktif'
+                    : isApprovedPaymentStage
+                    ? 'Permohonan Disetujui Petugas! Silakan Lakukan Pembayaran Sambungan Baru'
+                    : 'Proses Pendaftaran Anda Sedang Dalam Tahap Verifikasi Petugas'}
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 font-medium">
-                  Berkas pendaftaran sambungan baru Anda telah tersimpan di sistem Aetra. <span className="font-bold text-[#005DAA]">Mohon dicek secara berkala</span> untuk pembaruan status persetujuan dan penerbitan nomor pembayaran.
+                  {isCompletedStage
+                    ? 'Meter air telah terpasang dan diverifikasi oleh petugas. Seluruh fitur profil, cek tagihan bulanan, dan survey kepuasan telah dapat diakses.'
+                    : isApprovedPaymentStage
+                    ? 'Nomor pembayaran telah diterbitkan. Silakan lakukan pelunasan biaya sambungan dan konfirmasi dengan mengunggah bukti transfer di bawah ini.'
+                    : 'Berkas permohonan sambungan baru Anda sedang dalam proses verifikasi administratif & teknis. Mohon dicek secara berkala.'}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => onNavigateTracking(activeExistingRegistration.noForm)}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#005DAA] hover:bg-[#004A88] text-white text-xs font-bold shadow-md hover:shadow-lg transition cursor-pointer"
-              >
-                <Compass className="w-4 h-4 text-sky-200" />
-                <span>Buka Live Tracking &rarr;</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Payment Number Alert if Approved by Admin */}
-          {activeExistingRegistration.nomorPembayaran && (
-            <div className="bg-linear-to-r from-emerald-500 to-teal-600 text-white rounded-2xl p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-[10px] uppercase font-black tracking-wider text-emerald-100 bg-white/20 px-2.5 py-0.5 rounded-full">
-                  Pendaftaran Disetujui Admin!
-                </span>
-                <div className="text-xs text-emerald-100">Nomor Pembayaran Pelanggan:</div>
-                <div className="font-mono text-2xl sm:text-3xl font-black tracking-wider text-amber-200">
-                  {activeExistingRegistration.nomorPembayaran}
-                </div>
-                <p className="text-[11px] text-emerald-100">
-                  Total Biaya Sambungan: <strong className="text-white">Rp {((activeExistingRegistration.biayaSambungan || 1371545)).toLocaleString('id-ID')}</strong>
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
+            {/* Tracking Access Button (Hanya jika sudah tahap pembayaran atau selesai) */}
+            {(isApprovedPaymentStage || isCompletedStage) && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(activeExistingRegistration.nomorPembayaran || '');
-                    setNotification('Nomor Pembayaran berhasil disalin!');
-                    setTimeout(() => setNotification(null), 3000);
-                  }}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white text-emerald-800 font-bold text-xs hover:bg-emerald-50 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  onClick={() => onNavigateTracking(activeExistingRegistration.noForm)}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#005DAA] hover:bg-[#004A88] text-white text-xs font-bold shadow-md hover:shadow-lg transition cursor-pointer"
                 >
-                  <Copy className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Salin Nomor Bayar</span>
+                  <Compass className="w-4 h-4 text-sky-200" />
+                  <span>Buka Live Tracking &rarr;</span>
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* ======================================================== */}
+          {/* PAYMENT BOX & PROOF UPLOAD (KETIKA NOMOR BAYAR TERBIT)   */}
+          {/* ======================================================== */}
+          {isApprovedPaymentStage && (
+            <div className="space-y-4">
+              {/* Payment Instruction Banner */}
+              <div className="bg-linear-to-r from-emerald-600 via-teal-600 to-[#005DAA] text-white rounded-2xl p-6 shadow-md space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/20 pb-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-emerald-100 bg-white/20 px-3 py-1 rounded-full">
+                      Nomor Pembayaran Resmi (Virtual Account / Billing)
+                    </span>
+                    <div className="font-mono text-3xl sm:text-4xl font-black tracking-wider text-amber-200 pt-1">
+                      {activeExistingRegistration.nomorPembayaran || '8899-' + activeExistingRegistration.noSr}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(activeExistingRegistration.nomorPembayaran || ('8899-' + activeExistingRegistration.noSr));
+                      setNotification('Nomor Pembayaran berhasil disalin!');
+                      setTimeout(() => setNotification(null), 3000);
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-white text-emerald-900 font-black text-xs hover:bg-emerald-50 shadow-md transition flex items-center justify-center gap-2 cursor-pointer self-start sm:self-center"
+                  >
+                    <Copy className="w-4 h-4 text-emerald-700" />
+                    <span>Salin Nomor Bayar</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-blue-50">
+                  <div className="bg-white/10 p-3 rounded-xl backdrop-blur-xs">
+                    <span className="text-[10px] text-emerald-200 block">Total Biaya Sambungan</span>
+                    <strong className="text-base text-white font-mono">
+                      Rp {((activeExistingRegistration.biayaSambungan || 1371545)).toLocaleString('id-ID')}
+                    </strong>
+                  </div>
+
+                  <div className="bg-white/10 p-3 rounded-xl backdrop-blur-xs">
+                    <span className="text-[10px] text-emerald-200 block">Metode Pembayaran</span>
+                    <strong className="text-xs text-white">ATM, m-Banking, Indomaret, Alfamart</strong>
+                  </div>
+
+                  <div className="bg-white/10 p-3 rounded-xl backdrop-blur-xs">
+                    <span className="text-[10px] text-emerald-200 block">Status Pembayaran Saat Ini</span>
+                    <strong className="text-xs text-amber-300 font-bold">
+                      {activeExistingRegistration.statusPembayaran || (activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED' ? 'Menunggu Verifikasi Kasir' : 'Menunggu Pelunasan')}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload Bukti Pembayaran & Konfirmasi Pelunasan */}
+              <div className="bg-sky-50/60 p-5 rounded-2xl border-2 border-sky-200 space-y-4">
+                <div className="flex items-center gap-2.5 text-slate-800 font-bold text-sm">
+                  <ReceiptText className="w-5 h-5 text-[#005DAA]" />
+                  <span>Konfirmasi Pembayaran &amp; Upload Bukti Transfer</span>
+                </div>
+                <p className="text-xs text-slate-600">
+                  Setelah Anda melakukan transfer atau pelunasan di ATM / Bank / Minimarket, silakan unggah foto struk bukti pembayaran untuk diverifikasi petugas kasir Aetra:
+                </p>
+
+                {activeExistingRegistration.paymentProof ? (
+                  <div className="bg-white p-4 rounded-xl border border-emerald-300 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        Bukti Pembayaran Telah Diunggah
+                      </span>
+                      <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                        Status: Menunggu Verifikasi Kasir
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <span className="text-slate-500 block">Bank / Saluran:</span>
+                        <strong className="text-slate-800">{activeExistingRegistration.paymentProof.bank}</strong>
+                        <span className="text-slate-500 block mt-1">Tanggal Bayar:</span>
+                        <strong className="text-slate-800">{activeExistingRegistration.paymentProof.tanggalBayar}</strong>
+                      </div>
+
+                      {activeExistingRegistration.paymentProof.dataUrl && (
+                        <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-video flex items-center justify-center">
+                          <img
+                            src={activeExistingRegistration.paymentProof.dataUrl}
+                            alt="Bukti Transfer"
+                            className="max-h-full object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white p-4 sm:p-5 rounded-xl border border-sky-200 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Bank / Saluran Pembayaran <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={paymentProofData.bank}
+                          onChange={(e) => setPaymentProofData({ ...paymentProofData, bank: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+                        >
+                          <option value="BCA (Virtual Account)">BCA (Virtual Account)</option>
+                          <option value="Mandiri (Bill Payment)">Mandiri (Bill Payment)</option>
+                          <option value="BRI (BRIVA)">BRI (BRIVA)</option>
+                          <option value="BNI (Virtual Account)">BNI (Virtual Account)</option>
+                          <option value="Indomaret / Alfamart">Indomaret / Alfamart</option>
+                          <option value="QRIS / Dompet Digital">QRIS / Dompet Digital</option>
+                          <option value="Loket Resmi Aetra">Loket Resmi Aetra</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Nama Pengirim / Pemilik Rekening
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentProofData.namaPengirim}
+                          onChange={(e) => setPaymentProofData({ ...paymentProofData, namaPengirim: e.target.value })}
+                          placeholder={activeExistingRegistration.namaKtp || 'Nama pemilik rekening'}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-800 mb-1">
+                          Tanggal Pembayaran <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={paymentProofData.tanggalBayar}
+                          onChange={(e) => setPaymentProofData({ ...paymentProofData, tanggalBayar: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Upload Struk Foto */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-slate-800">
+                        Foto Bukti Struk / Screenshot Transfer <span className="text-red-500">*</span>
+                      </label>
+                      
+                      {paymentProofData.fileUrl ? (
+                        <div className="relative border rounded-xl overflow-hidden bg-slate-100 max-w-sm aspect-video flex items-center justify-center">
+                          <img
+                            src={paymentProofData.fileUrl}
+                            alt="Preview Struk"
+                            className="max-h-full object-contain"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setPaymentProofData({ ...paymentProofData, fileUrl: '' })}
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-md cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setCameraModalConfig({
+                              isOpen: true,
+                              targetType: 'payment',
+                              title: 'Foto Struk Pembayaran via Kamera',
+                              guideType: 'payment'
+                            })}
+                            className="px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#005DAA] text-xs font-bold flex items-center gap-2 hover:bg-blue-100 transition cursor-pointer"
+                          >
+                            <Camera className="w-4 h-4" />
+                            <span>Ambil via Kamera</span>
+                          </button>
+
+                          <label className="px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition cursor-pointer">
+                            <Upload className="w-4 h-4" />
+                            <span>Pilih File Gambar</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  setPaymentProofData((prev) => ({
+                                    ...prev,
+                                    fileUrl: reader.result as string,
+                                  }));
+                                };
+                                reader.readAsDataURL(file);
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tombol Konfirmasi Pembayaran */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleConfirmPayment}
+                        disabled={isSubmittingPayment}
+                        className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                      >
+                        <Send className="w-4 h-4 text-emerald-200" />
+                        <span>Saya Telah Melakukan Pembayaran (Kirim Konfirmasi)</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -772,14 +1041,23 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 <span className="text-[10px] text-slate-400 font-semibold uppercase block">Nomor Formulir</span>
                 <span className="font-mono text-sm font-black text-slate-900 block">#{activeExistingRegistration.noForm}</span>
               </div>
+
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
                 <span className="text-[10px] text-slate-400 font-semibold uppercase block">No. SR (Sambungan)</span>
-                <span className="font-mono text-sm font-black text-[#005DAA] block">{activeExistingRegistration.noSr || '-'}</span>
+                <span className="font-mono text-sm font-black text-[#005DAA] block">SR - {activeExistingRegistration.noSr || '-'}</span>
               </div>
+
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block">ID Pelanggan Resmi</span>
-                <span className="font-mono text-sm font-black text-emerald-700 block">{activeExistingRegistration.idPelanggan}</span>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase block">ID Pelanggan</span>
+                <span className="font-mono text-sm font-black text-slate-800 block">
+                  {activeExistingRegistration.idPelanggan ? (
+                    <span className="text-emerald-700 font-black">#{activeExistingRegistration.idPelanggan}</span>
+                  ) : (
+                    <span className="text-slate-400 text-xs italic font-normal">Diterbitkan setelah lunas &amp; meter terpasang</span>
+                  )}
+                </span>
               </div>
+
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
                 <span className="text-[10px] text-slate-400 font-semibold uppercase block">Golongan Tarif</span>
                 <span className="font-semibold text-xs text-slate-800 block truncate">{activeExistingRegistration.golonganTarif || 'Rumah Tangga'}</span>
@@ -790,7 +1068,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-semibold block">Nama Pemohon (KTP):</span>
                 <strong className="text-slate-900 text-sm block">{activeExistingRegistration.namaKtp}</strong>
-                <span className="text-[11px] text-slate-500 block">NIK: {activeExistingRegistration.noKtp} • HP/WA: {activeExistingRegistration.telpHp}</span>
+                <span className="text-[11px] text-slate-500 block">NIK: {activeExistingRegistration.noKtp} &bull; HP/WA: {activeExistingRegistration.telpHp}</span>
               </div>
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
                 <span className="text-[10px] text-slate-400 uppercase font-semibold block">Alamat Pemasangan:</span>
@@ -805,19 +1083,28 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200">
             <span className="text-xs text-slate-500 flex items-center gap-1.5">
               <Info className="w-4 h-4 text-blue-600 shrink-0" />
-              Petugas Aetra dan Admin akan memverifikasi berkas dan menghubungi nomor telepon Anda.
+              Petugas Aetra dan Admin memverifikasi berkas dan memproses sambungan air bersih ke lokasi Anda.
             </span>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setFormData(activeExistingRegistration);
-                  setForceShowForm(true);
-                }}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
-              >
-                Buka / Edit Detail Formulir
-              </button>
+              {/* Form editing is locked once approved/payment number issued */}
+              {isApprovedPaymentStage ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-semibold border border-slate-200" title="Formulir telah disetujui & terkunci untuk tahapan pembayaran">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Formulir Terkunci (Tahap Pembayaran)</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData(activeExistingRegistration);
+                    setForceShowForm(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+                >
+                  Buka / Edit Detail Formulir
+                </button>
+              )}
+
               {onViewReceipt && (
                 <button
                   type="button"
@@ -831,7 +1118,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           </div>
         </div>
       ) : (
-        /* WIZARD MULTI-SECTION FORM */
+        /* ======================================================== */
+        /* WIZARD MULTI-SECTION REGISTRATION FORM                   */
+        /* ======================================================== */
         <div className="bg-white rounded-2xl border border-slate-300 shadow-md overflow-hidden">
           {/* Form Header */}
           <div className="bg-linear-to-r from-[#005DAA] via-[#004B8A] to-[#003868] text-white p-6 border-b-4 border-[#F37021]">
@@ -844,7 +1133,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   Pendaftaran Sambungan Baru
                 </h1>
                 <p className="text-xs text-blue-100">
-                  Surat Permohonan Sambungan Rumah (SR) PT Aetra Air Tangerang &bull; Formulir Resmi 6 Tahap
+                  Surat Permohonan Sambungan Rumah (SR) PT Aetra Air Tangerang &bull; Formulir Pendaftaran 6 Tahap
                 </p>
               </div>
 
@@ -924,7 +1213,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               <div className="flex flex-wrap gap-2">
                 {validationErrors.map((err, idx) => (
                   <span key={idx} className="px-2.5 py-1 rounded-lg bg-red-100 text-red-800 font-semibold text-[11px] border border-red-200">
-                    • {err}
+                    &bull; {err}
                   </span>
                 ))}
               </div>
@@ -996,11 +1285,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                       required
                       value={formData.namaKtp}
                       onChange={(e) => {
-                        setFormData({ ...formData, namaKtp: e.target.value.toUpperCase() });
+                        setFormData({ ...formData, namaKtp: e.target.value });
                         setErrorFields((prev) => ({ ...prev, namaKtp: false }));
                       }}
-                      placeholder="Masukkan nama lengkap sesuai KTP (HURUF BESAR)"
-                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-900 tracking-wide focus:outline-hidden transition ${
+                      placeholder="Nama lengkap sesuai e-KTP"
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-hidden transition ${
                         errorFields.namaKtp ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                       }`}
                     />
@@ -1016,11 +1305,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                       required
                       value={formData.noKtp}
                       onChange={(e) => {
-                        setFormData({ ...formData, noKtp: e.target.value.replace(/\D/g, '') });
+                        setFormData({ ...formData, noKtp: e.target.value });
                         setErrorFields((prev) => ({ ...prev, noKtp: false }));
                       }}
-                      placeholder="Contoh: 3671041908850003"
-                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold tracking-widest focus:outline-hidden transition ${
+                      placeholder="16 digit NIK e-KTP"
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold focus:outline-hidden transition ${
                         errorFields.noKtp ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                       }`}
                     />
@@ -1038,8 +1327,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         setFormData({ ...formData, pekerjaan: e.target.value });
                         setErrorFields((prev) => ({ ...prev, pekerjaan: false }));
                       }}
-                      placeholder="Contoh: Karyawan Swasta / Wiraswasta"
-                      className={`w-full px-3 py-2.5 rounded-xl text-xs focus:outline-hidden transition ${
+                      placeholder="Contoh: Karyawan Swasta, Wiraswasta, PNS"
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium focus:outline-hidden transition ${
                         errorFields.pekerjaan ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                       }`}
                     />
@@ -1047,17 +1336,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                      No. Telepon / WhatsApp / HP <span className="text-red-500">*</span>
+                      Nomor HP / WhatsApp Aktif <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="text"
+                      type="tel"
                       required
                       value={formData.telpHp}
                       onChange={(e) => {
                         setFormData({ ...formData, telpHp: e.target.value });
                         setErrorFields((prev) => ({ ...prev, telpHp: false }));
                       }}
-                      placeholder="Contoh: 081288224645"
+                      placeholder="0812-xxxx-xxxx"
                       className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium focus:outline-hidden transition ${
                         errorFields.telpHp ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                       }`}
@@ -1065,15 +1354,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-bold text-slate-800 mb-1">
                       Email Pemohon (Opsional)
                     </label>
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="contoh: pelanggan@gmail.com"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+                      placeholder="email@domain.com"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -1081,7 +1370,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             )}
 
             {/* ======================================================== */}
-            {/* SECTION 2: ALAMAT SESUAI KTP (38 PROVINSI LENGKAP)       */}
+            {/* SECTION 2: ALAMAT KTP LENGKAP (WILAYAH INDONESIA LENGKAP) */}
             {/* ======================================================== */}
             {currentStep === 2 && (
               <section className="space-y-6 animate-in fade-in">
@@ -1090,15 +1379,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     <MapPin className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 2: Alamat Sesuai KTP</h2>
-                    <p className="text-xs text-slate-500">Pilihan wilayah lengkap seluruh 38 Provinsi di Indonesia</p>
+                    <h2 className="font-bold text-slate-900 text-base">Section 2: Alamat KTP Pemohon</h2>
+                    <p className="text-xs text-slate-500">Pilih wilayah domisili kependudukan sesuai e-KTP</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Alamat Jalan / Blok / Nomor Rumah (Sesuai KTP) <span className="text-red-500">*</span>
+                      Alamat Lengkap Jalan / No. Rumah (KTP) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -1108,15 +1397,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         setFormData({ ...formData, alamatKtp: e.target.value });
                         setErrorFields((prev) => ({ ...prev, alamatKtp: false }));
                       }}
-                      placeholder="Masukkan nama jalan, nomor persil, atau blok sesuai KTP"
-                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs focus:outline-hidden transition ${
+                      placeholder="Nama jalan, nomor rumah, blok / gang"
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium focus:outline-hidden ${
                         errorFields.alamatKtp ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                       }`}
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* RT/RW */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         RT / RW <span className="text-red-500">*</span>
@@ -1129,17 +1417,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                           setFormData({ ...formData, rtRwKtp: e.target.value });
                           setErrorFields((prev) => ({ ...prev, rtRwKtp: false }));
                         }}
-                        placeholder="Contoh: 003/005"
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-hidden ${
+                        placeholder="Contoh: 003/004"
+                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden ${
                           errorFields.rtRwKtp ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                         }`}
                       />
                     </div>
 
-                    {/* Provinsi */}
+                    {/* Dropdown Provinsi */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Provinsi (38 Provinsi) <span className="text-red-500">*</span>
+                        Provinsi <span className="text-red-500">*</span>
                       </label>
                       <select
                         value={formData.provinsiKtp || ''}
@@ -1228,9 +1516,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         <option value="">-- Pilih Kecamatan --</option>
                         {INDONESIA_PROVINCES_DATA.find((p) => p.name === formData.provinsiKtp)
                           ?.cities.find((c) => c.name === formData.kotaKtp)
-                          ?.districts.map((d) => (
-                            <option key={d.name} value={d.name}>
-                              {d.name}
+                          ?.districts.map((dist) => (
+                            <option key={dist.name} value={dist.name}>
+                              {dist.name}
                             </option>
                           ))}
                       </select>
@@ -1256,14 +1544,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden disabled:opacity-50"
                       >
                         <option value="">-- Pilih Kelurahan / Desa --</option>
-                        {INDONESIA_PROVINCES_DATA.find((p) => p.name === formData.provinsiKtp)
-                          ?.cities.find((c) => c.name === formData.kotaKtp)
-                          ?.districts.find((d) => d.name === formData.kecamatanKtp)
-                          ?.villages.map((v, idx) => (
-                            <option key={`ktp-${v}-${idx}`} value={v}>
-                              {v}
-                            </option>
-                          ))}
+                        {(
+                          INDONESIA_PROVINCES_DATA.find((p) => p.name === formData.provinsiKtp)
+                            ?.cities.find((c) => c.name === formData.kotaKtp)
+                            ?.districts.find((d) => d.name === formData.kecamatanKtp)?.villages || []
+                        ).map((v: string) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -1280,8 +1569,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                           setFormData({ ...formData, kodePosKtp: e.target.value });
                           setErrorFields((prev) => ({ ...prev, kodePosKtp: false }));
                         }}
-                        placeholder="Contoh: 15520"
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-hidden ${
+                        placeholder="Contoh: 15710"
+                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:outline-hidden ${
                           errorFields.kodePosKtp ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                         }`}
                       />
@@ -1292,24 +1581,46 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             )}
 
             {/* ======================================================== */}
-            {/* SECTION 3: ALAMAT LOKASI PEMASANGAN                      */}
+            {/* SECTION 3: ALAMAT PEMASANGAN (KABUPATEN TANGERANG)       */}
             {/* ======================================================== */}
             {currentStep === 3 && (
               <section className="space-y-6 animate-in fade-in">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#005DAA] border border-blue-200">
-                    <Home className="w-4 h-4" />
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#005DAA] border border-blue-200">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-slate-900 text-base">Section 3: Alamat Lengkap Pemasangan</h2>
+                      <p className="text-xs text-slate-500">Wilayah Layanan Resmi Sambungan Baru Aetra &bull; Kabupaten Tangerang</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 3: Alamat Lokasi Pemasangan</h2>
-                    <p className="text-xs text-slate-500">Titik persil rumah / bangunan tempat pemasangan pipa meter air</p>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        alamatPasang: formData.alamatKtp,
+                        rtRwPasang: formData.rtRwKtp,
+                        provinsiPasang: 'Banten',
+                        kotaPasang: 'Kabupaten Tangerang',
+                        kecamatanPasang: formData.kecamatanKtp,
+                        kelurahanPasang: formData.kelurahanKtp,
+                        desaPasang: formData.desaKtp,
+                        kodePosPasang: formData.kodePosKtp,
+                      });
+                    }}
+                    className="text-xs font-bold text-[#005DAA] hover:bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Salin dari Alamat KTP</span>
+                  </button>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Alamat Lengkap Lokasi Pemasangan <span className="text-red-500">*</span>
+                      Alamat Lengkap Titik Pasang (Nama Jalan, No. Rumah, Blok/Gang) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -1319,18 +1630,35 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         setFormData({ ...formData, alamatPasang: e.target.value });
                         setErrorFields((prev) => ({ ...prev, alamatPasang: false }));
                       }}
-                      placeholder="Masukkan alamat persil / lokasi fisik pemasangan pipa dinas"
-                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs focus:outline-hidden transition ${
+                      placeholder="Contoh: Jl. Merpati No. 24 RT 003/004, Perum Graha Cikupa"
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium focus:outline-hidden ${
                         errorFields.alamatPasang ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                       }`}
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* RT/RW Pasang */}
+                  {/* Interactive Map Picker */}
+                  <div className="pt-1">
+                    <InteractiveMapPicker
+                      initialLat={formData.dataPasang?.gpsLat || '-6.236600'}
+                      initialLng={formData.dataPasang?.gpsLong || '106.562100'}
+                      onLocationChange={(lat: string, lng: string) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          dataPasang: {
+                            ...prev.dataPasang,
+                            gpsLat: lat,
+                            gpsLong: lng,
+                          },
+                        }));
+                      }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        RT / RW Pemasangan <span className="text-red-500">*</span>
+                        RT / RW Pasang <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -1340,122 +1668,53 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                           setFormData({ ...formData, rtRwPasang: e.target.value });
                           setErrorFields((prev) => ({ ...prev, rtRwPasang: false }));
                         }}
-                        placeholder="Contoh: 003/005"
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-hidden ${
+                        placeholder="003/004"
+                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden ${
                           errorFields.rtRwPasang ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                         }`}
                       />
                     </div>
 
-                    {/* Provinsi Pasang */}
+                    {/* Filter Kecamatan Kabupaten Tangerang */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Provinsi Pemasangan <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.provinsiPasang || formData.provinsiKtp || 'Banten'}
-                        onChange={(e) => {
-                          const newProv = e.target.value;
-                          setFormData({
-                            ...formData,
-                            provinsiPasang: newProv,
-                            kotaPasang: '',
-                            kecamatanPasang: '',
-                            desaPasang: '',
-                            kelurahanPasang: '',
-                            kodePosPasang: '',
-                          });
-                          setErrorFields((prev) => ({ ...prev, provinsiPasang: false }));
-                        }}
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden ${
-                          errorFields.provinsiPasang ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                        }`}
-                      >
-                        <option value="">-- Pilih Provinsi --</option>
-                        {INDONESIA_PROVINCES_DATA.map((prov) => (
-                          <option key={`pasang-${prov.id}`} value={prov.name}>
-                            {prov.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Kota / Kabupaten Pasang */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kota / Kabupaten Pemasangan <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.kotaPasang || ''}
-                        onChange={(e) => {
-                          const newCity = e.target.value;
-                          setFormData({
-                            ...formData,
-                            kotaPasang: newCity,
-                            kecamatanPasang: '',
-                            desaPasang: '',
-                            kelurahanPasang: '',
-                            kodePosPasang: '',
-                          });
-                          setErrorFields((prev) => ({ ...prev, kotaPasang: false }));
-                        }}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                      >
-                        <option value="">-- Pilih Kota / Kab --</option>
-                        {INDONESIA_PROVINCES_DATA.find((p) => p.name === (formData.provinsiPasang || 'Banten'))?.cities.map((city) => (
-                          <option key={`pasang-city-${city.name}`} value={city.name}>
-                            {city.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Kecamatan Pasang */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kecamatan <span className="text-red-500">*</span>
+                        Kecamatan Pasang <span className="text-red-500">*</span>
                       </label>
                       <select
                         value={formData.kecamatanPasang || ''}
                         onChange={(e) => {
-                          const kec = e.target.value;
-                          const currentProv = formData.provinsiPasang || 'Banten';
-                          const currentCity = formData.kotaPasang || 'Kabupaten Tangerang';
-                          const districtObj = INDONESIA_PROVINCES_DATA.find((p) => p.name === currentProv)
-                            ?.cities.find((c) => c.name === currentCity)
-                            ?.districts.find((d) => d.name === kec);
-
+                          const newKec = e.target.value;
+                          const found = AETRA_TANGERANG_INSTALLATION_REGIONS.find((k) => k.name === newKec);
                           setFormData({
                             ...formData,
-                            kecamatanPasang: kec,
+                            kecamatanPasang: newKec,
                             kelurahanPasang: '',
                             desaPasang: '',
-                            kodePosPasang: districtObj?.postalCode || formData.kodePosPasang || '',
+                            kodePosPasang: found?.postalCode || formData.kodePosPasang || '',
                           });
                           setErrorFields((prev) => ({ ...prev, kecamatanPasang: false }));
                         }}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden ${
+                          errorFields.kecamatanPasang ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
+                        }`}
                       >
                         <option value="">-- Pilih Kecamatan --</option>
-                        {(
-                          INDONESIA_PROVINCES_DATA.find((p) => p.name === (formData.provinsiPasang || 'Banten'))
-                            ?.cities.find((c) => c.name === (formData.kotaPasang || 'Kabupaten Tangerang'))
-                            ?.districts || []
-                        ).map((d) => (
-                          <option key={`pasang-kec-${d.name}`} value={d.name}>
-                            {d.name}
+                        {AETRA_TANGERANG_INSTALLATION_REGIONS.map((k) => (
+                          <option key={`inst-kec-${k.name}`} value={k.name}>
+                            {k.name}
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    {/* Kelurahan Pasang */}
+                    {/* Kelurahan / Desa Pasang */}
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Kelurahan / Desa <span className="text-red-500">*</span>
                       </label>
                       <select
                         value={formData.kelurahanPasang || formData.desaPasang || ''}
+                        disabled={!formData.kecamatanPasang}
                         onChange={(e) => {
                           const val = e.target.value;
                           setFormData({
@@ -1465,16 +1724,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                           });
                           setErrorFields((prev) => ({ ...prev, kelurahanPasang: false }));
                         }}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden disabled:opacity-50"
                       >
                         <option value="">-- Pilih Kelurahan / Desa --</option>
                         {(
-                          INDONESIA_PROVINCES_DATA.find((p) => p.name === (formData.provinsiPasang || 'Banten'))
-                            ?.cities.find((c) => c.name === (formData.kotaPasang || 'Kabupaten Tangerang'))
-                            ?.districts.find((d) => d.name === formData.kecamatanPasang)
-                            ?.villages || []
-                        ).map((kel: string, idx: number) => (
-                          <option key={`pasang-vil-${kel}-${idx}`} value={kel}>
+                          AETRA_TANGERANG_INSTALLATION_REGIONS.find((k) => k.name === formData.kecamatanPasang)?.villages || []
+                        ).map((kel: string) => (
+                          <option key={`inst-vil-${kel}`} value={kel}>
                             {kel}
                           </option>
                         ))}
@@ -1494,8 +1750,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                           setFormData({ ...formData, kodePosPasang: e.target.value });
                           setErrorFields((prev) => ({ ...prev, kodePosPasang: false }));
                         }}
-                        placeholder="Contoh: 15520"
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-hidden ${
+                        placeholder="15520"
+                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:outline-hidden ${
                           errorFields.kodePosPasang ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
                         }`}
                       />
@@ -1535,41 +1791,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                         </label>
                       ))}
                     </div>
-
-                    {formData.statusKepemilikan === 'Lainnya' && (
-                      <input
-                        type="text"
-                        value={formData.statusKepemilikanLainnya || ''}
-                        onChange={(e) => setFormData({ ...formData, statusKepemilikanLainnya: e.target.value })}
-                        placeholder="Sebutkan status kepemilikan (mis: Rumah Dinas, Warisan, Hak Pakai)"
-                        className="w-full mt-2 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                      />
-                    )}
-                  </div>
-
-                  {/* Peta Interaktif & Koordinat GPS */}
-                  <div className="pt-2">
-                    <InteractiveMapPicker
-                      initialLat={formData.dataPasang?.gpsLat || -6.2366}
-                      initialLng={formData.dataPasang?.gpsLong || 106.5621}
-                      onLocationChange={(lat: string, lng: string) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          dataPasang: {
-                            ...prev.dataPasang,
-                            gpsLat: lat,
-                            gpsLong: lng,
-                          },
-                        }));
-                      }}
-                    />
                   </div>
                 </div>
               </section>
             )}
 
             {/* ======================================================== */}
-            {/* SECTION 4: INFORMASI BANGUNAN & LINGKUNGAN               */}
+            {/* SECTION 4: KONDISI BANGUNAN, LINGKUNGAN & GOLONGAN TARIF */}
             {/* ======================================================== */}
             {currentStep === 4 && (
               <section className="space-y-6 animate-in fade-in">
@@ -1578,220 +1806,137 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     <Building2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 4: Informasi Bangunan &amp; Lingkungan</h2>
-                    <p className="text-xs text-slate-500">Peruntukan fungsi bangunan dan prasarana lingkungan</p>
+                    <h2 className="font-bold text-slate-900 text-base">Section 4: Kondisi Bangunan &amp; Golongan Tarif</h2>
+                    <p className="text-xs text-slate-500">Penentuan golongan tarif otomatis berdasarkan luas bangunan, jumlah lantai, dan kawasan</p>
                   </div>
                 </div>
 
-                {/* Kategori Fungsi Bangunan */}
-                <div className="space-y-3">
-                  <label className="block text-xs font-bold text-slate-800">
-                    Kategori Peruntukan Bangunan <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectKategori('rumah_tangga')}
-                      className={`p-4 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                        kategoriFungsi === 'rumah_tangga'
-                          ? 'bg-blue-50 border-[#005DAA] ring-2 ring-blue-200 text-[#005DAA]'
-                          : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">Rumah Tangga</span>
-                        <Home className="w-4 h-4" />
-                      </div>
-                      <span className="text-[10px] text-slate-500 mt-1">Rumah tinggal / perumahan non-komersial</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSelectKategori('sosial_instansi')}
-                      className={`p-4 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                        kategoriFungsi === 'sosial_instansi'
-                          ? 'bg-blue-50 border-[#005DAA] ring-2 ring-blue-200 text-[#005DAA]'
-                          : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">Sosial &amp; Instansi</span>
-                        <Landmark className="w-4 h-4" />
-                      </div>
-                      <span className="text-[10px] text-slate-500 mt-1">Tempat ibadah, yayasan, kantor pemerintah</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSelectKategori('usaha')}
-                      className={`p-4 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
-                        kategoriFungsi === 'usaha'
-                          ? 'bg-blue-50 border-[#005DAA] ring-2 ring-blue-200 text-[#005DAA]'
-                          : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">Niaga &amp; Usaha</span>
-                        <Store className="w-4 h-4" />
-                      </div>
-                      <span className="text-[10px] text-slate-500 mt-1">Ruko, warung, bengkel, tempat komersial</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Kolom Jenis Fasilitas Sosial / Instansi (Berbentuk Kolom Form) */}
-                {kategoriFungsi === 'sosial_instansi' && (
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Jenis Fasilitas Sosial / Instansi <span className="text-red-500">*</span>
+                <div className="space-y-5">
+                  {/* Kategori Utama Peruntukan */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <label className="block text-xs font-bold text-slate-800">
+                      Kategori Peruntukan Bangunan <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      value={formData.fungsiBangunan}
-                      onChange={(e) => setFormData({ ...formData, fungsiBangunan: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                    >
-                      {SOSIAL_INSTANSI_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Kolom Jenis Usaha / Komersial (Berbentuk Kolom Form) */}
-                {kategoriFungsi === 'usaha' && (
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Jenis Bidang Usaha / Niaga Komersil <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={formData.fungsiBangunan}
-                      onChange={(e) => setFormData({ ...formData, fungsiBangunan: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                    >
-                      {USAHA_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Rincian Ukuran Fisik: HANYA MUNCUL APABILA RUMAH TANGGA */}
-                {kategoriFungsi === 'rumah_tangga' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Luas Bangunan (m²) <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          value={formData.luasBangunan}
-                          onChange={(e) => {
-                            setFormData({ ...formData, luasBangunan: e.target.value });
-                            setErrorFields((prev) => ({ ...prev, luasBangunan: false }));
-                          }}
-                          placeholder="Contoh: 72"
-                          className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-semibold focus:outline-hidden ${
-                            errorFields.luasBangunan ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:ring-2 focus:ring-[#005DAA]'
-                          }`}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Luas Tanah (m²) <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          value={formData.luasTanah}
-                          onChange={(e) => {
-                            setFormData({ ...formData, luasTanah: e.target.value });
-                            setErrorFields((prev) => ({ ...prev, luasTanah: false }));
-                          }}
-                          placeholder="Contoh: 90"
-                          className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-semibold focus:outline-hidden ${
-                            errorFields.luasTanah ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:ring-2 focus:ring-[#005DAA]'
-                          }`}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Jumlah Lantai <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          value={formData.kondisiBangunan?.jumlahLantai}
-                          onChange={(e) => {
-                            setFormData({
-                              ...formData,
-                              kondisiBangunan: { ...formData.kondisiBangunan, jumlahLantai: e.target.value }
-                            });
-                            setErrorFields((prev) => ({ ...prev, jumlahLantai: false }));
-                          }}
-                          placeholder="Contoh: 1"
-                          className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-semibold focus:outline-hidden ${
-                            errorFields.jumlahLantai ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:ring-2 focus:ring-[#005DAA]'
-                          }`}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Jumlah Penghuni <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          value={formData.kondisiBangunan?.jumlahPenghuni}
-                          onChange={(e) => {
-                            setFormData({
-                              ...formData,
-                              kondisiBangunan: { ...formData.kondisiBangunan, jumlahPenghuni: e.target.value }
-                            });
-                            setErrorFields((prev) => ({ ...prev, jumlahPenghuni: false }));
-                          }}
-                          placeholder="Contoh: 4"
-                          className={`w-full px-3 py-2 bg-white border rounded-xl text-xs font-semibold focus:outline-hidden ${
-                            errorFields.jumlahPenghuni ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:ring-2 focus:ring-[#005DAA]'
-                          }`}
-                        />
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { id: 'rumah_tangga', label: 'Rumah Tangga', icon: Home, desc: 'Tempat tinggal murni' },
+                        { id: 'sosial_instansi', label: 'Sosial / Instansi', icon: Building2, desc: 'Tempat ibadah & sosial' },
+                        { id: 'usaha', label: 'Usaha', icon: Building2, desc: 'Toko, ruko, warung & bisnis' },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        const isSelected = kategoriFungsi === item.id;
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => {
+                              setKategoriFungsi(item.id as KategoriFungsi);
+                              if (item.id === 'rumah_tangga') {
+                                setFormData({ ...formData, fungsiBangunan: 'Rumah Tangga' });
+                              } else if (item.id === 'sosial_instansi') {
+                                setFormData({ ...formData, fungsiBangunan: SOSIAL_INSTANSI_OPTIONS[0] });
+                              } else {
+                                setFormData({ ...formData, fungsiBangunan: 'Usaha' });
+                              }
+                            }}
+                            className={`p-4 rounded-xl border-2 cursor-pointer transition flex items-start gap-3 ${
+                              isSelected
+                                ? 'bg-blue-50/80 border-[#005DAA] shadow-xs'
+                                : 'bg-white border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className={`p-2 rounded-lg ${isSelected ? 'bg-[#005DAA] text-white' : 'bg-slate-100 text-slate-600'}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <strong className={`block text-xs font-bold ${isSelected ? 'text-[#005DAA]' : 'text-slate-800'}`}>
+                                {item.label}
+                              </strong>
+                              <span className="text-[11px] text-slate-500 block mt-0.5">
+                                {item.desc}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-
-                    {/* Estimasi Golongan Tarif Air (Hanya Rumah Tangga) */}
-                    {tariffResult && (
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
-                        <div>
-                          <span className="text-[10px] text-slate-500 font-semibold uppercase block">Estimasi Golongan Tarif Air</span>
-                          <strong className="text-sm font-black text-[#005DAA]">{tariffResult.name}</strong>
-                          <p className="text-[11px] text-slate-600 mt-0.5">{tariffResult.appliedClause}</p>
-                        </div>
-                        <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg shrink-0">
-                          Tarif Resmi Aetra
-                        </span>
-                      </div>
-                    )}
                   </div>
-                )}
 
-                {/* KOLOM LINGKUNGAN DAN PRASARANA */}
-                <BuildingEnvironmentFields
-                  formData={formData}
-                  setFormData={setFormData}
-                />
+                  {/* Jika Rumah Tangga: Tampilkan Luas Dasar & Lingkungan */}
+                  {kategoriFungsi === 'rumah_tangga' && (
+                    <div className="space-y-4">
+                      {/* Luas Bangunan & Luas Tanah Dasar */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-sky-200">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-800 mb-1">
+                            Luas Bangunan Dasar (m²) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="5000"
+                            required
+                            value={formData.luasBangunan}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData((prev) => ({
+                                ...prev,
+                                luasBangunan: val,
+                                totalLuasBangunan: parseFloat(val || '0') * (parseInt(String(prev.kondisiBangunan?.jumlahLantai || '1'), 10) || 1),
+                              }));
+                              setErrorFields((prev) => ({ ...prev, luasBangunan: false }));
+                            }}
+                            placeholder="Contoh: 36, 54, 72"
+                            className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-hidden ${
+                              errorFields.luasBangunan ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
+                            }`}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-800 mb-1">
+                            Luas Tanah (m²) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="5000"
+                            required
+                            value={formData.luasTanah}
+                            onChange={(e) => {
+                              setFormData({ ...formData, luasTanah: e.target.value });
+                              setErrorFields((prev) => ({ ...prev, luasTanah: false }));
+                            }}
+                            placeholder="Contoh: 60, 90, 120"
+                            className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-hidden ${
+                              errorFields.luasTanah ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Kondisi Bangunan (Lantai & Penghuni) & Lingkungan */}
+                      <BuildingEnvironmentFields
+                        formData={formData}
+                        setFormData={setFormData}
+                        errorFields={errorFields}
+                      />
+                    </div>
+                  )}
+
+                  {/* Hasil Penentuan Golongan Tarif */}
+                  <DomesticTariffResultCard
+                    totalLuas={parseFloat(String(formData.totalLuasBangunan || formData.luasBangunan || '0'))}
+                    isRealEstate={formData.lingkungan?.realEstate === 'Ya'}
+                    hasUsaha={Boolean(formData.hasUsahaKomersil)}
+                    luasBangunan={formData.luasBangunan || '0'}
+                    jumlahLantai={formData.kondisiBangunan?.jumlahLantai || '1'}
+                  />
+                </div>
               </section>
             )}
 
             {/* ======================================================== */}
-            {/* SECTION 5: UPLOAD DOKUMEN ADMINISTRASI                   */}
+            {/* SECTION 5: UPLOAD DOKUMEN PERSYARATAN & FOTO PROPERTI    */}
             {/* ======================================================== */}
             {currentStep === 5 && (
               <section className="space-y-6 animate-in fade-in">
@@ -1800,17 +1945,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     <Upload className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 5: Upload Dokumen Persyaratan</h2>
-                    <p className="text-xs text-slate-500">Unggah berkas identitas KTP pemohon, Kartu Keluarga, dan PBB</p>
+                    <h2 className="font-bold text-slate-900 text-base">Section 5: Upload Dokumen Persyaratan &amp; Foto Rumah</h2>
+                    <p className="text-xs text-slate-500">Unggah foto dokumen e-KTP, Kartu Keluarga, Bukti PBB, dan Foto Tampak Depan Properti / Titik Meter</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* KTP */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* 1. KTP */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">1. Foto KTP Pemohon *</span>
-                      {formData.persyaratan?.ktp && (
+                      <span className="text-xs font-bold text-slate-900">1. Foto e-KTP Pemohon <span className="text-red-500">*</span></span>
+                      {formData.persyaratanFiles?.ktp && (
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Check className="w-3 h-3" /> Terlampir
                         </span>
@@ -1862,11 +2007,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     )}
                   </div>
 
-                  {/* KK */}
+                  {/* 2. KK */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-900">2. Foto Kartu Keluarga (KK)</span>
-                      {formData.persyaratan?.kk && (
+                      {formData.persyaratanFiles?.kk && (
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Check className="w-3 h-3" /> Terlampir
                         </span>
@@ -1918,11 +2063,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     )}
                   </div>
 
-                  {/* PBB */}
+                  {/* 3. PBB */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">3. Bukti PBB / Tagihan</span>
-                      {formData.persyaratan?.pbb && (
+                      <span className="text-xs font-bold text-slate-900">3. Bukti PBB / Tagihan Listrik</span>
+                      {formData.persyaratanFiles?.pbb && (
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Check className="w-3 h-3" /> Terlampir
                         </span>
@@ -1973,6 +2118,96 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                       </div>
                     )}
                   </div>
+
+                  {/* 4. Foto Properti / Rumah Lapangan & Titik Rencana Meter (PINDAHAN DARI PETUGAS) */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900">4. Foto Tampak Depan Rumah &amp; Rencana Titik Meter</span>
+                      {formData.fotoPropertiFiles && formData.fotoPropertiFiles.length > 0 && (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Check className="w-3 h-3" /> {formData.fotoPropertiFiles.length} Foto Terlampir
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCameraModalConfig({
+                          isOpen: true,
+                          targetType: 'property',
+                          title: 'Foto Properti & Titik Meter via Kamera',
+                          guideType: 'property'
+                        })}
+                        className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 text-[#005DAA] border border-blue-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        Ambil via Kamera
+                      </button>
+
+                      <label className="w-full py-2 px-3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer text-center">
+                        <Upload className="w-3.5 h-3.5" />
+                        Pilih File Foto Rumah
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
+                            Array.from(files).forEach((file) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const newPhoto: PropertyPhoto = {
+                                  id: 'photo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                                  name: file.name,
+                                  dataUrl: reader.result as string,
+                                  source: 'file',
+                                  caption: 'Foto Properti & Titik Sambung',
+                                  timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                                };
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  fotoPropertiFiles: [...(prev.fotoPropertiFiles || []), newPhoto],
+                                }));
+                              };
+                              reader.readAsDataURL(file);
+                            });
+                            e.target.value = '';
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Preview list */}
+                    {formData.fotoPropertiFiles && formData.fotoPropertiFiles.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        {formData.fotoPropertiFiles.map((photo, idx) => (
+                          <div key={photo.id || idx} className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-video">
+                            <img
+                              src={photo.dataUrl}
+                              alt={photo.name || `Foto Properti ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  fotoPropertiFiles: (prev.fotoPropertiFiles || []).filter((p) => p.id !== photo.id),
+                                }));
+                              }}
+                              className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md"
+                              title="Hapus foto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </section>
             )}
@@ -1988,50 +2223,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   </div>
                   <div>
                     <h2 className="font-bold text-slate-900 text-base">Section 6: Portal Petugas Lapangan &amp; Persetujuan</h2>
-                    <p className="text-xs text-slate-500">Administrasi teknis, spesifikasi water meter, pipa dinas, galian, dokumentasi foto, dan persetujuan</p>
+                    <p className="text-xs text-slate-500">Administrasi teknis, verifikasi jalur distribusi, spesifikasi pipa dinas, dan persetujuan berlangganan</p>
                   </div>
                 </div>
 
-                {/* Kolom Petugas Lapangan, Spesifikasi Teknis, Galian, & Foto Dokumentasi */}
+                {/* Kolom Petugas Lapangan (Bersih, Terstruktur, Tanpa Foto Properti) */}
                 <PetugasOfficerFields
                   formData={formData}
                   setFormData={setFormData}
                   errorFields={errorFields}
-                  onOpenCamera={() => setCameraModalConfig({
-                    isOpen: true,
-                    targetType: 'property',
-                    title: 'Foto Lokasi Lapangan & Titik Meter',
-                    guideType: 'property'
-                  })}
-                  onUploadPhotos={(e) => {
-                    const files = e.target.files;
-                    if (!files || files.length === 0) return;
-                    Array.from(files).forEach((file) => {
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const newPhoto: PropertyPhoto = {
-                          id: 'photo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-                          name: file.name,
-                          dataUrl: reader.result as string,
-                          source: 'file',
-                          caption: 'Dokumentasi Lapangan',
-                          timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                        };
-                        setFormData((prev) => ({
-                          ...prev,
-                          fotoPropertiFiles: [...(prev.fotoPropertiFiles || []), newPhoto],
-                        }));
-                      };
-                      reader.readAsDataURL(file);
-                    });
-                    e.target.value = '';
-                  }}
-                  onRemovePhoto={(photoId) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      fotoPropertiFiles: (prev.fotoPropertiFiles || []).filter((p) => p.id !== photoId),
-                    }));
-                  }}
                 />
 
                 {/* Checkbox Pernyataan Persetujuan Berlangganan */}
@@ -2091,7 +2291,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     onClick={handleNextStep}
                     className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#005DAA] hover:bg-[#004A88] text-white text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-98 cursor-pointer"
                   >
-                    <span>Selanjutnya: {SECTIONS[currentStep]?.title}</span>
+                    <span>Selanjutnya</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
@@ -2125,7 +2325,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         onClose={() => setCameraModalConfig((prev) => ({ ...prev, isOpen: false }))}
         onCapture={handleDirectCameraCapture}
         title={cameraModalConfig.title}
-        guideType={cameraModalConfig.guideType || 'document'}
+        guideType={cameraModalConfig.guideType === 'property' ? 'property' : 'document'}
       />
     </div>
   );

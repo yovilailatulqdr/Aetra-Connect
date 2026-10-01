@@ -1,8 +1,7 @@
 import React from 'react';
-import { TabType, UserRole, UserAccount } from '../types';
+import { TabType, UserRole, UserAccount, RegistrationStatus } from '../types';
 import { AetraLogo } from './AetraLogo';
-import { Menu, ShieldCheck, User, LogOut, Database } from 'lucide-react';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { Menu, ShieldCheck, User, LogOut, HelpCircle, BookOpen } from 'lucide-react';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -11,19 +10,25 @@ interface HeaderProps {
   userRole: UserRole;
   onSwitchRole: (role: UserRole) => void;
   currentUser?: UserAccount | null;
+  customerStatus?: RegistrationStatus;
+  isSidebarVisible?: boolean;
   onLogout?: () => void;
   onOpenSupabaseModal?: () => void;
+  onSelectTab?: (tab: TabType) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onOpenMobileSidebar,
-  registeredCount,
+  registeredCount: _registeredCount,
   userRole,
-  onSwitchRole,
+  onSwitchRole: _onSwitchRole,
   currentUser,
+  customerStatus,
+  isSidebarVisible = true,
   onLogout,
-  onOpenSupabaseModal,
+  onOpenSupabaseModal: _onOpenSupabaseModal,
+  onSelectTab,
 }) => {
   const tabTitles: Record<TabType, { title: string; subtitle: string; tag: string }> = {
     registration: {
@@ -59,6 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const current = tabTitles[activeTab] || tabTitles.registration;
+  const isCustomerActive = customerStatus === 'ACTIVE_CUSTOMER';
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
@@ -82,21 +88,23 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
         {/* Left: Mobile Hamburger + Title / Breadcrumb */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={onOpenMobileSidebar}
-            className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition"
-            aria-label="Buka Menu Sidebar"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          {isSidebarVisible && (
+            <button
+              onClick={onOpenMobileSidebar}
+              className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition"
+              aria-label="Buka Menu Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
 
-          {/* Logo on mobile only (since desktop has left sidebar logo) */}
-          <div className="lg:hidden">
+          {/* Logo */}
+          <div className={isSidebarVisible ? 'lg:hidden' : 'block'}>
             <AetraLogo size="sm" variant="horizontal" />
           </div>
 
           {/* Desktop Title & Subtitle */}
-          <div className="hidden lg:block">
+          <div className={isSidebarVisible ? 'hidden lg:block' : 'hidden md:block pl-3 border-l border-slate-200'}>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#F37021] bg-orange-50 px-2 py-0.5 rounded border border-orange-200 flex items-center gap-1.5">
                 {activeTab === 'tracking' && (
@@ -115,20 +123,35 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Role Switcher & Account Info */}
+        {/* Right: FAQ Quick Button & Account Info */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Supabase connection runs silently in the background per user preference */}
+          {/* Top Quick FAQ Button */}
+          {onSelectTab && (
+            <button
+              type="button"
+              onClick={() => onSelectTab(activeTab === 'faq' ? 'registration' : 'faq')}
+              title="Pusat Bantuan & Tanya Jawab (FAQ)"
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'faq'
+                  ? 'bg-[#005DAA] text-white border-[#005DAA] shadow-xs'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <HelpCircle className={`w-4 h-4 ${activeTab === 'faq' ? 'text-amber-300' : 'text-[#005DAA]'}`} />
+              <span className="hidden sm:inline">Pusat Bantuan (FAQ)</span>
+            </button>
+          )}
 
           {/* Role Status Badge */}
           {currentUser?.role === 'admin' ? (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-[#005DAA] to-[#003868] text-white text-xs font-bold shadow-2xs border border-blue-900/30">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-              <span>Portal Admin Backoffice</span>
+              <span className="hidden sm:inline">Portal Admin</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-[#005DAA] text-xs font-bold shadow-2xs">
               <User className="w-3.5 h-3.5" />
-              <span>Portal Pelanggan</span>
+              <span className="hidden sm:inline">Portal Pelanggan</span>
             </div>
           )}
 
@@ -140,7 +163,13 @@ export const Header: React.FC<HeaderProps> = ({
                   {currentUser.nama}
                 </div>
                 <div className="text-[10px] text-slate-500 font-mono">
-                  ID: #{currentUser.idPelanggan}
+                  {currentUser.role === 'admin' ? (
+                    'Otoritas Admin'
+                  ) : isCustomerActive && currentUser.idPelanggan ? (
+                    `ID: #${currentUser.idPelanggan}`
+                  ) : (
+                    'Calon Pelanggan'
+                  )}
                 </div>
               </div>
 

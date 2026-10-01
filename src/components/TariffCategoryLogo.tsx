@@ -114,9 +114,9 @@ export const TariffCategoryLogo: React.FC<TariffCategoryLogoProps> = ({
       description: 'Fasilitas Ibadah & Kantor Pemerintah',
     },
     USAHA: {
-      code: 'N1',
-      label: 'Niaga & Usaha',
-      sub: 'Ruko, Toko & Perdagangan',
+      code: 'U1',
+      label: 'Usaha',
+      sub: 'Ruko, Toko & Usaha Komersil',
       primaryColor: '#E11D48',
       glowColor: 'rgba(225, 29, 72, 0.25)',
       gradient: 'from-rose-600 via-red-600 to-amber-900',
@@ -124,7 +124,7 @@ export const TariffCategoryLogo: React.FC<TariffCategoryLogoProps> = ({
       textColor: 'text-rose-950',
       badgeColor: 'bg-rose-50 text-rose-900 border-rose-300',
       icon: Store,
-      description: 'Perniagaan, Usaha & Jasa',
+      description: 'Usaha Komersil & Jasa',
     },
   };
 

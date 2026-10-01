@@ -4,8 +4,20 @@ export type RegistrationStatus =
   | 'NEW_USER' 
   | 'VERIFYING' 
   | 'WAITING_PAYMENT' 
+  | 'PAYMENT_CONFIRMED'
   | 'INSTALLATION_TRACKING' 
-  | 'ACTIVE_CUSTOMER';
+  | 'ACTIVE_CUSTOMER'
+  | 'REJECTED';
+
+export interface PaymentProofData {
+  dataUrl: string;
+  bank: string;
+  namaPengirim?: string;
+  noRekening?: string;
+  tanggalBayar: string;
+  catatan?: string;
+  uploadedAt: string;
+}
 
 export interface UserProfile {
   role: string;
@@ -236,6 +248,8 @@ export interface RegistrationFormData {
   status_pendaftaran?: RegistrationStatus;
   nomorPembayaran?: string;
   nomor_pembayaran?: string;
+  statusPembayaran?: 'Belum Ditagihkan' | 'Menunggu Pembayaran' | 'Menunggu Verifikasi Kasir' | 'Lunas';
+  paymentProof?: PaymentProofData;
   isSkAccepted?: boolean;
   is_sk_accepted?: boolean;
   // Pembayaran
@@ -298,7 +312,8 @@ export interface CustomerTrackingRecord {
   biayaSambungan?: number;
   nomorPembayaran?: string;
   nomor_pembayaran?: string;
-  statusPembayaran?: 'Lunas' | 'Menunggu Pembayaran' | 'Belum Ditagihkan';
+  statusPembayaran?: 'Lunas' | 'Menunggu Pembayaran' | 'Menunggu Verifikasi Kasir' | 'Belum Ditagihkan';
+  paymentProof?: PaymentProofData;
   petugasSurveyor?: {
     nama: string;
     id: string;
