@@ -39,71 +39,37 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     isLive?: boolean;
   }
 
+  // Hide bottom tabs in mobile mode when customer is still in registration / not yet active (air mengalir)
+  if (userRole !== 'admin' && customerStatus !== 'ACTIVE_CUSTOMER') {
+    return null;
+  }
+
   const getCustomerTabs = (): TabItem[] => {
-    if (customerStatus === 'ACTIVE_CUSTOMER') {
-      return [
-        {
-          id: 'registration',
-          label: 'Profil',
-          icon: User,
-        },
-        {
-          id: 'tracking',
-          label: 'Tracking',
-          icon: Compass,
-        },
-        {
-          id: 'billing',
-          label: 'Cek Tagihan',
-          icon: ReceiptText,
-          isCenter: true,
-        },
-        {
-          id: 'survey',
-          label: 'Survey',
-          icon: HeartHandshake,
-        },
-        {
-          id: 'faq',
-          label: 'Panduan',
-          icon: BookOpen,
-        },
-      ];
-    }
-
-    if (customerStatus === 'INSTALLATION_TRACKING') {
-      return [
-        {
-          id: 'registration',
-          label: 'Status',
-          icon: FileSignature,
-        },
-        {
-          id: 'tracking',
-          label: 'Tracking',
-          icon: Compass,
-          isCenter: true,
-          isLive: true,
-        },
-        {
-          id: 'faq',
-          label: 'Panduan',
-          icon: BookOpen,
-        },
-      ];
-    }
-
-    // NEW_USER / VERIFYING / WAITING_PAYMENT
     return [
       {
         id: 'registration',
-        label: customerStatus === 'NEW_USER' ? 'Daftar SR' : 'Status',
-        icon: FileSignature,
+        label: 'Profil Anda',
+        icon: User,
+      },
+      {
+        id: 'tracking',
+        label: 'Tracking',
+        icon: Compass,
+      },
+      {
+        id: 'billing',
+        label: 'Tagihan',
+        icon: ReceiptText,
         isCenter: true,
       },
       {
+        id: 'survey',
+        label: 'Survey',
+        icon: HeartHandshake,
+      },
+      {
         id: 'faq',
-        label: 'Panduan',
+        label: 'FAQ',
         icon: BookOpen,
       },
     ];

@@ -451,7 +451,7 @@ export default function App() {
     saveTrackingRecordToDb(newTracking).catch((e) => console.warn('Supabase tracking save error:', e));
   };
 
-  const handleUpdateTrackingStep = (noForm: string, nextStep: 1 | 2 | 3 | 4, customNote?: string) => {
+  const handleUpdateTrackingStep = (noForm: string, nextStep: 1 | 2 | 3 | 4 | 5, customNote?: string) => {
     const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     const nowTimeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
 
@@ -464,7 +464,7 @@ export default function App() {
               trackingStep: nextStep,
               dataPasang: {
                 ...reg.dataPasang,
-                noSeriMeter: nextStep >= 3 ? (reg.dataPasang.noSeriMeter || 'AET-2609-8812') : reg.dataPasang.noSeriMeter,
+                noSeriMeter: nextStep >= 4 ? (reg.dataPasang.noSeriMeter || 'AET-2609-8812') : reg.dataPasang.noSeriMeter,
                 noSegel: nextStep >= 4 ? (reg.dataPasang.noSegel || 'SGL-AAT-77401') : reg.dataPasang.noSegel,
               },
             }
@@ -502,16 +502,18 @@ export default function App() {
         });
 
         const stepTitles: Record<number, string> = {
-          1: 'Verifikasi Berkas Permohonan (Admin)',
-          2: 'Persetujuan Teknis & Konfirmasi Pembayaran (Admin)',
-          3: 'Surat Tugas Pemasangan Pipa & Meter Air Terbit (Admin)',
-          4: 'Pemasangan Tuntas & Air Bersih Resmi Aktif (Admin)',
+          1: 'Verifikasi Berkas & Administrasi',
+          2: 'Persetujuan Teknis & Konfirmasi Pembayaran',
+          3: 'Penerbitan SPKO & Pengerjaan Pipa Dinas Kontraktor',
+          4: 'Pemasangan Water Meter & Segel Resmi',
+          5: 'Air Bersih Mengalir & Sambungan Aktif Resmi',
         };
         const stepDescs: Record<number, string> = {
-          1: customNote || 'Berkas identitas KTP, KK, dan persil telah diperiksa dan dinyatakan lengkap oleh Admin Operasional.',
+          1: customNote || 'Berkas identitas KTP, KK, dan persil telah diperiksa dan dinyatakan lengkap oleh Tim Administrasi Aetra.',
           2: customNote || 'Persetujuan teknis disahkan dan pembayaran biaya sambungan telah diverifikasi Lunas oleh Billing Aetra.',
-          3: customNote || 'Surat Perintah Kerja (SPK) diterbitkan. Tim teknisi lapangan ditugaskan untuk pemasangan pipa dinas dan water meter.',
-          4: customNote || 'Uji debit air bersih sukses, segel kran resmi dipasang, sambungan baru telah aktif mengalirkan air bersih ke pelanggan!',
+          3: customNote || 'Surat Perintah Kerja Operasional (SPKO) diterbitkan. Kontraktor mitra Aetra melakukan penarikan pipa dinas dan galian.',
+          4: customNote || 'Instalasi water meter SNI dan penguncian segel kran resmi telah selesai dilaksanakan oleh teknisi di persil.',
+          5: customNote || 'Uji debit air bersih sukses lulus standar Permenkes. Air bersih resmi mengalir lancar ke persil pelanggan!',
         };
 
         const newLog = {
@@ -523,7 +525,7 @@ export default function App() {
           status: 'completed' as const,
           step: nextStep,
           actor: 'Admin Operasional Aetra',
-          badge: nextStep === 4 ? 'Sukses Tuntas' : `Tahap ${nextStep} Terverifikasi`,
+          badge: nextStep === 5 ? 'Sukses Tuntas' : `Tahap ${nextStep} Terverifikasi`,
         };
 
         const existingLogs = rec.timelineEvents || [];
@@ -532,7 +534,7 @@ export default function App() {
           ...rec,
           currentStep: nextStep,
           statusPembayaran: nextStep >= 2 ? ('Lunas' as const) : rec.statusPembayaran,
-          nomorMeter: nextStep >= 3 ? (rec.nomorMeter || 'AET-2609-8812') : rec.nomorMeter,
+          nomorMeter: nextStep >= 4 ? (rec.nomorMeter || 'AET-2609-8812') : rec.nomorMeter,
           nomorSegel: nextStep >= 4 ? (rec.nomorSegel || 'SGL-AAT-77401') : rec.nomorSegel,
           lastUpdatedByAdmin: `${todayStr}, ${nowTimeStr} (Admin Operasional Aetra)`,
           steps: updatedSteps,
@@ -552,6 +554,7 @@ export default function App() {
   const handleUpdateTechnicalData = (
     noForm: string,
     data: {
+      idPelanggan?: string;
       nomorMeter?: string;
       nomorSegel?: string;
       petugasSurveyor?: string;
@@ -583,6 +586,7 @@ export default function App() {
 
         return {
           ...rec,
+          idPelanggan: data.idPelanggan !== undefined ? data.idPelanggan : rec.idPelanggan,
           nomorMeter: data.nomorMeter !== undefined ? data.nomorMeter : rec.nomorMeter,
           nomorSegel: data.nomorSegel !== undefined ? data.nomorSegel : rec.nomorSegel,
           statusPembayaran: data.statusPembayaran !== undefined ? data.statusPembayaran : rec.statusPembayaran,
@@ -621,6 +625,7 @@ export default function App() {
         if (reg.noForm !== noForm) return reg;
         const updatedReg = {
           ...reg,
+          idPelanggan: data.idPelanggan !== undefined ? data.idPelanggan : reg.idPelanggan,
           dataPasang: {
             ...reg.dataPasang,
             noSeriMeter: data.nomorMeter || reg.dataPasang?.noSeriMeter || '',
@@ -643,15 +648,23 @@ export default function App() {
     }
   };
 
-  const handleApproveRegistration = (noForm: string, nomorPembayaran: string, biayaSambungan: number, adminNotes?: string) => {
+  const handleApproveRegistration = (
+    noForm: string, 
+    nomorPembayaran: string, 
+    biayaSambungan: number, 
+    adminNotes?: string,
+    customIdPelanggan?: string
+  ) => {
     const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     const nowTimeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+    const finalIdPelanggan = customIdPelanggan || ('10' + (noForm || '123456').replace(/\D/g, '').padEnd(6, '0'));
 
     setRegistrations((prev) =>
       prev.map((reg) =>
         reg.noForm === noForm
           ? {
               ...reg,
+              idPelanggan: finalIdPelanggan,
               statusPendaftaran: 'WAITING_PAYMENT' as const,
               status_pendaftaran: 'WAITING_PAYMENT' as const,
               nomorPembayaran,
@@ -701,6 +714,7 @@ export default function App() {
 
         const updated: CustomerTrackingRecord = {
           ...rec,
+          idPelanggan: finalIdPelanggan,
           currentStep: 2,
           nomorPembayaran,
           biayaSambungan,

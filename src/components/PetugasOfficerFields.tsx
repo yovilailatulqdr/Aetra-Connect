@@ -69,12 +69,9 @@ export const PetugasOfficerFields: React.FC<PetugasOfficerFieldsProps> = ({
 
   const galianOptions = [
     'Tanah',
-    '< 28,8 m²',
     'Coneblock',
     'Aspal',
     'Beton',
-    '1 - 2 m',
-    '< 1 m',
   ];
 
   const luasSurveyOptions = [
@@ -108,7 +105,7 @@ export const PetugasOfficerFields: React.FC<PetugasOfficerFieldsProps> = ({
           </div>
         </div>
         <span className="text-[10px] bg-white/20 text-white font-bold px-3 py-1 rounded-full shrink-0">
-          Portal Petugas
+          Petugas Lapangan
         </span>
       </div>
 
@@ -167,11 +164,11 @@ export const PetugasOfficerFields: React.FC<PetugasOfficerFieldsProps> = ({
         </div>
       </div>
 
-      {/* 2. Titik Lokasi, Alamat & Koordinat GPS */}
+      {/* 2. Verifikasi Alamat Fisik Titik Pemasangan */}
       <div className="bg-white p-4 sm:p-5 rounded-xl border border-sky-200 shadow-2xs space-y-4">
         <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100 text-xs font-bold text-slate-800">
           <MapPin className="w-4 h-4 text-[#005DAA]" />
-          <span>2. Titik Lokasi Pemasangan &amp; Verifikasi Alamat Fisik</span>
+          <span>2. Verifikasi Kesesuaian Alamat Fisik Lapangan</span>
         </div>
 
         {/* Data Alamat Benar / Koreksi */}
@@ -217,35 +214,6 @@ export const PetugasOfficerFields: React.FC<PetugasOfficerFieldsProps> = ({
                 className="flex-1 px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
               />
             )}
-          </div>
-        </div>
-
-        {/* GPS Koordinat */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              GPS Latitude Titik Sambungan
-            </label>
-            <input
-              type="text"
-              value={dp.gpsLat || ''}
-              onChange={(e) => updateDataPasang('gpsLat', e.target.value)}
-              placeholder="-6.236600"
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              GPS Longitude Titik Sambungan
-            </label>
-            <input
-              type="text"
-              value={dp.gpsLong || ''}
-              onChange={(e) => updateDataPasang('gpsLong', e.target.value)}
-              placeholder="106.562100"
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-semibold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-            />
           </div>
         </div>
       </div>
@@ -300,6 +268,23 @@ export const PetugasOfficerFields: React.FC<PetugasOfficerFieldsProps> = ({
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
             />
           </div>
+        </div>
+
+        {/* Catatan Petugas untuk Kondisi Jaringan */}
+        <div className="pt-2">
+          <label className="block text-xs font-bold text-slate-800 mb-1">
+            Catatan Petugas (Kondisi Jaringan Distribusi)
+          </label>
+          <textarea
+            rows={2}
+            value={dp.catatanPetugas || dp.catatanJaringan || ''}
+            onChange={(e) => {
+              updateDataPasang('catatanPetugas', e.target.value);
+              updateDataPasang('catatanJaringan', e.target.value);
+            }}
+            placeholder="Tuliskan catatan teknis kondisi jaringan pipa, tekanan eksisting, tapping point, estimasi galian, kendala lapangan, dll..."
+            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden leading-relaxed"
+          />
         </div>
       </div>
 

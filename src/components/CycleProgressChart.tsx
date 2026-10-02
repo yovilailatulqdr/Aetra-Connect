@@ -211,7 +211,7 @@ export const CycleProgressChart: React.FC<CycleProgressChartProps> = ({
       .padding(0.24);
 
     // Y Scale
-    const maxVal = metricMode === 'percentage' ? 100 : Math.max(5, d3.max(activeData, (d) => d.total) || 5);
+    const maxVal = metricMode === 'percentage' ? 100 : Math.max(5, d3.max(activeData, (d: any) => d.total) || 5);
     const yScale = d3.scaleLinear().domain([0, maxVal]).nice().range([innerHeight, 0]);
 
     // Grid lines
@@ -262,7 +262,7 @@ export const CycleProgressChart: React.FC<CycleProgressChartProps> = ({
     // Background Bar Track
     barGroups
       .append('rect')
-      .attr('x', (d) => xScale(d.cycle) || 0)
+      .attr('x', (d: any) => xScale(d.cycle) || 0)
       .attr('y', 0)
       .attr('width', xScale.bandwidth())
       .attr('height', innerHeight)
@@ -274,33 +274,33 @@ export const CycleProgressChart: React.FC<CycleProgressChartProps> = ({
     // Foreground Progress Bar
     barGroups
       .append('rect')
-      .attr('x', (d) => xScale(d.cycle) || 0)
+      .attr('x', (d: any) => xScale(d.cycle) || 0)
       .attr('width', xScale.bandwidth())
       .attr('y', innerHeight)
       .attr('height', 0)
       .attr('rx', 6)
-      .attr('fill', (d) => {
+      .attr('fill', (d: any) => {
         if (selectedCycleName === d.cycle) return '#E86216'; // Active orange
         if (d.percentage === 100) return '#10b981'; // Completed emerald
         if (d.percentage >= 50) return '#0055A5'; // Corporate Aetra Blue
         if (d.percentage > 0) return '#0284c7'; // Light Blue
         return '#cbd5e1'; // Untouched slate
       })
-      .attr('stroke', (d) => (selectedCycleName === d.cycle ? '#c2410c' : 'none'))
-      .attr('stroke-width', (d) => (selectedCycleName === d.cycle ? 2 : 0))
+      .attr('stroke', (d: any) => (selectedCycleName === d.cycle ? '#c2410c' : 'none'))
+      .attr('stroke-width', (d: any) => (selectedCycleName === d.cycle ? 2 : 0))
       .transition()
       .duration(700)
-      .delay((_, i) => i * 35)
+      .delay((_: any, i: number) => i * 35)
       .ease(d3.easeCubicOut)
-      .attr('y', (d) => yScale(metricMode === 'percentage' ? d.percentage : d.completed))
+      .attr('y', (d: any) => yScale(metricMode === 'percentage' ? d.percentage : d.completed))
       .attr(
         'height',
-        (d) => innerHeight - yScale(metricMode === 'percentage' ? d.percentage : d.completed)
+        (d: any) => innerHeight - yScale(metricMode === 'percentage' ? d.percentage : d.completed)
       );
 
     // Interactive Hover Events
     barGroups
-      .on('mouseenter', (event, d) => {
+      .on('mouseenter', (event: any, d: any) => {
         d3.select(event.currentTarget as SVGGElement)
           .select('rect:nth-child(2)')
           .transition()
@@ -353,13 +353,13 @@ export const CycleProgressChart: React.FC<CycleProgressChartProps> = ({
             </div>
           `);
       })
-      .on('mousemove', (event) => {
+      .on('mousemove', (event: any) => {
         const [xPos, yPos] = d3.pointer(event, containerRef.current);
         tooltip
           .style('left', `${xPos + 15}px`)
           .style('top', `${yPos - 30}px`);
       })
-      .on('mouseleave', (event: MouseEvent) => {
+      .on('mouseleave', (event: any) => {
         d3.select(event.currentTarget as SVGGElement)
           .select('rect:nth-child(2)')
           .transition()
@@ -369,7 +369,7 @@ export const CycleProgressChart: React.FC<CycleProgressChartProps> = ({
 
         tooltip.style('opacity', 0).style('display', 'none');
       })
-      .on('click', (_, d) => {
+      .on('click', (_: any, d: any) => {
         setSelectedCycleName(d.cycle);
         onSelectCycle(d.cycle);
       });
@@ -380,19 +380,19 @@ export const CycleProgressChart: React.FC<CycleProgressChartProps> = ({
       .enter()
       .append('text')
       .attr('class', 'bar-label select-none')
-      .attr('x', (d) => (xScale(d.cycle) || 0) + xScale.bandwidth() / 2)
+      .attr('x', (d: any) => (xScale(d.cycle) || 0) + xScale.bandwidth() / 2)
       .attr('y', innerHeight)
       .attr('text-anchor', 'middle')
       .attr('fill', '#334155')
       .attr('font-size', '10px')
       .attr('font-weight', '700')
-      .text((d) => (metricMode === 'percentage' ? `${d.percentage}%` : `${d.completed}/${d.total}`))
+      .text((d: any) => (metricMode === 'percentage' ? `${d.percentage}%` : `${d.completed}/${d.total}`))
       .transition()
       .duration(700)
       .ease(d3.easeCubicOut)
       .attr(
         'y',
-        (d) =>
+        (d: any) =>
           yScale(metricMode === 'percentage' ? d.percentage : d.completed) - 6
       );
 
@@ -419,7 +419,7 @@ export const CycleProgressChart: React.FC<CycleProgressChartProps> = ({
     const yAxis = d3
       .axisLeft(yScale)
       .ticks(5)
-      .tickFormat((d) => (metricMode === 'percentage' ? `${d}%` : `${d}`));
+      .tickFormat((d: any) => (metricMode === 'percentage' ? `${d}%` : `${d}`));
 
     const yAxisGroup = g.append('g').attr('class', 'y-axis').call(yAxis);
     yAxisGroup.selectAll('text').attr('fill', '#64748b').attr('font-size', '10px');

@@ -21,7 +21,7 @@ interface AdminApprovalModalProps {
   isOpen: boolean;
   record: RegistrationFormData | null;
   onClose: () => void;
-  onApprove: (noForm: string, nomorPembayaran: string, biayaSambungan: number, adminNotes?: string) => void;
+  onApprove: (noForm: string, nomorPembayaran: string, biayaSambungan: number, adminNotes?: string, idPelanggan?: string) => void;
   onReject: (noForm: string, reason: string) => void;
 }
 
@@ -40,16 +40,25 @@ export const AdminApprovalModal: React.FC<AdminApprovalModalProps> = ({
     '88290' + (record.idPelanggan ? record.idPelanggan.replace(/\D/g, '').slice(-7) : Math.floor(1000000 + Math.random() * 9000000))
   );
 
+  const defaultIdPelanggan = record.idPelanggan || ('10' + (record.noForm || '123456').replace(/\D/g, '').padEnd(6, '0'));
+
+  const [idPelanggan, setIdPelanggan] = useState<string>(defaultIdPelanggan);
   const [nomorPembayaran, setNomorPembayaran] = useState<string>(defaultNoBayar);
   const [biayaSambungan, setBiayaSambungan] = useState<number>(record.biayaSambungan || 1371545);
   const [adminNotes, setAdminNotes] = useState<string>('Berkas identitas pemohon dan survei kelayakan teknis jaringan telah disetujui oleh Petugas Administrasi.');
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
   const [rejectReason, setRejectReason] = useState<string>('Kelengkapan berkas KTP/PBB tidak sesuai dengan alamat persil pemasangan.');
   const [copied, setCopied] = useState<boolean>(false);
+  const [copiedId, setCopiedId] = useState<boolean>(false);
 
   const handleGenerateNewNo = () => {
     const newNo = '88290' + Math.floor(1000000 + Math.random() * 9000000);
     setNomorPembayaran(newNo);
+  };
+
+  const handleGenerateNewIdPelanggan = () => {
+    const newId = '10' + Math.floor(100000 + Math.random() * 900000);
+    setIdPelanggan(newId);
   };
 
   const handleCopyNo = () => {
@@ -58,12 +67,22 @@ export const AdminApprovalModal: React.FC<AdminApprovalModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(idPelanggan);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
   const handleConfirmApprove = () => {
     if (!nomorPembayaran.trim()) {
       alert('Nomor pembayaran wajib diisi.');
       return;
     }
-    onApprove(record.noForm, nomorPembayaran.trim(), Number(biayaSambungan), adminNotes);
+    if (!idPelanggan.trim()) {
+      alert('ID Pelanggan wajib diisi.');
+      return;
+    }
+    onApprove(record.noForm, nomorPembayaran.trim(), Number(biayaSambungan), adminNotes, idPelanggan.trim());
     onClose();
   };
 
@@ -149,8 +168,49 @@ export const AdminApprovalModal: React.FC<AdminApprovalModalProps> = ({
           </div>
 
           {!isRejecting ? (
-            /* APPROVAL MODE: Input Nomor Pembayaran Manual & Biaya */
+            /* APPROVAL MODE: Input ID Pelanggan & Nomor Pembayaran Manual & Biaya */
             <div className="space-y-4">
+              {/* ID Pelanggan Manual Input */}
+              <div className="bg-emerald-50/80 p-4 rounded-2xl border-2 border-emerald-300 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-black text-slate-900 uppercase tracking-wide">
+                    ID Pelanggan (Kode Langganan Resmi) <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateNewIdPelanggan}
+                    className="inline-flex items-center gap-1 text-[11px] text-emerald-800 hover:underline font-bold cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Generate Otomatis</span>
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={idPelanggan}
+                    onChange={(e) => setIdPelanggan(e.target.value.replace(/\s+/g, ''))}
+                    placeholder="Contoh: 10842918"
+                    className="w-full pl-9 pr-24 py-2.5 bg-white border-2 border-emerald-400 rounded-xl font-mono text-base font-black text-emerald-900 tracking-wider focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyId}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedId ? 'Tersalin' : 'Salin'}</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  ID Pelanggan ini dapat Anda tentukan secara manual atau digenerate otomatis sebagai identitas sambungan tetap pelanggan.
+                </p>
+              </div>
+
+              {/* Nomor Pembayaran Input */}
               <div className="bg-blue-50/70 p-4 rounded-2xl border-2 border-blue-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-black text-slate-900 uppercase tracking-wide">

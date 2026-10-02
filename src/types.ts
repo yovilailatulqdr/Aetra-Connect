@@ -225,6 +225,8 @@ export interface RegistrationFormData {
     dataAlamat: string;
     dataAlamatKoreksi?: string;
     dataJaringan: string;
+    catatanJaringan?: string;
+    catatanPetugas?: string;
     dataGalian: string[];
     luasBangunanSurvey: string;
     kualitasBangunan: string;

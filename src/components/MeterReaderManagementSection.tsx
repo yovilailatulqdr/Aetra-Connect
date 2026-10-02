@@ -518,7 +518,7 @@ export const MeterReaderManagementSection: React.FC<MeterReaderManagementSection
         ) : (
           filteredReaders.map((reader) => {
           const assignedCusts = customers.filter((c) =>
-            reader.assignedCycles.some((ac) => ac.toLowerCase() === c.cycle.toLowerCase())
+            (reader.assignedCycles || []).some((ac: string) => ac.toLowerCase() === c.cycle.toLowerCase())
           );
           const completedCount = assignedCusts.filter(
             (c) => c.status === 'Verified' || c.status === 'Invoiced'
@@ -604,7 +604,7 @@ export const MeterReaderManagementSection: React.FC<MeterReaderManagementSection
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {reader.assignedCycles.map((c) => (
+                    {(reader.assignedCycles || []).map((c: string) => (
                       <span
                         key={c}
                         className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 dark:bg-blue-950/50 text-[#0055A5] dark:text-blue-300 border border-blue-200 dark:border-blue-800"
@@ -727,7 +727,7 @@ export const MeterReaderManagementSection: React.FC<MeterReaderManagementSection
                         type="button"
                         onClick={() => {
                           const updated = isChecked
-                            ? editingReader.assignedCycles.filter((item) => item !== c)
+                            ? editingReader.assignedCycles.filter((item: string) => item !== c)
                             : [...editingReader.assignedCycles, c];
                           setEditingReader({ ...editingReader, assignedCycles: updated });
                         }}

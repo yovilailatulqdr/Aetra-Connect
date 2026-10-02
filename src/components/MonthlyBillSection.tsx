@@ -16,16 +16,24 @@ import {
   QrCode, 
   Wallet, 
   Store, 
-  ChevronRight,
-  Sparkles,
-  ArrowRight,
-  ShieldCheck,
-  FileCheck,
-  History,
-  RotateCcw,
-  Copy,
-  Check,
-  Info
+  ChevronRight, 
+  Sparkles, 
+  ArrowRight, 
+  ShieldCheck, 
+  FileCheck, 
+  History, 
+  RotateCcw, 
+  Copy, 
+  Check, 
+  Info,
+  AlertTriangle,
+  Lock,
+  Flame,
+  PhoneCall,
+  ShieldAlert,
+  Wrench,
+  Ban,
+  Timer
 } from 'lucide-react';
 import { PaymentPartnersGrid } from './PaymentPartnersGrid';
 import { cloudSyncService, INITIAL_BILLS_DATA } from '../services/cloudSyncService';
@@ -36,6 +44,8 @@ interface MonthlyBillSectionProps {
   onNavigateToRegister?: () => void;
   externalBills?: MonthlyBillRecord[];
 }
+
+export type DemoBillState = 'NORMAL' | 'WARNING_TEMPORARY_SEAL' | 'DANGER_PERMANENT_DISCONNECT';
 
 export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
   currentUser,
@@ -49,6 +59,9 @@ export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
     const local = cloudSyncService.getLocalSnapshot().bills;
     return local.length > 0 ? local : INITIAL_BILLS_DATA;
   });
+
+  // Demo state switcher for presentation & user simulation
+  const [demoState, setDemoState] = useState<DemoBillState>('NORMAL');
 
   // Listen to cloud updates
   useEffect(() => {
@@ -80,53 +93,79 @@ export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
   const [copiedCode, setCopiedCode] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Search result
+  // Search result calculated
   const currentBill = useMemo(() => {
     if (!activeQuery.trim()) return null;
     const cleanQuery = activeQuery.trim().toLowerCase();
 
     // 1. Direct match in bills database by ID Pelanggan or No SR
-    const found = bills.find(
+    let found = bills.find(
       (b) =>
         b.idPelanggan.toLowerCase() === cleanQuery ||
         (b.noSr && b.noSr.toLowerCase() === cleanQuery)
     );
-    if (found) return found;
 
-    // 2. Fallback match in registrations (create virtual bill if registered but not yet billed)
-    const regMatch = registrations.find(
-      (r) =>
-        (r.idPelanggan && r.idPelanggan.toLowerCase() === cleanQuery) ||
-        (r.noForm && r.noForm.toLowerCase() === cleanQuery) ||
-        (r.noSr && r.noSr.toLowerCase() === cleanQuery)
-    );
-    if (regMatch) {
+    if (!found) {
+      // 2. Fallback match in registrations (create virtual bill if registered)
+      const regMatch = registrations.find(
+        (r) =>
+          (r.idPelanggan && r.idPelanggan.toLowerCase() === cleanQuery) ||
+          (r.noForm && r.noForm.toLowerCase() === cleanQuery) ||
+          (r.noSr && r.noSr.toLowerCase() === cleanQuery)
+      );
+      if (regMatch) {
+        found = {
+          id: `bill-reg-${regMatch.noForm}`,
+          idPelanggan: regMatch.idPelanggan || '10842918',
+          noSr: regMatch.noSr || '168392',
+          nama: regMatch.namaKtp,
+          alamat: `${regMatch.alamatPasang || regMatch.alamatKtp} RT/RW ${regMatch.rtRwPasang || regMatch.rtRwKtp}`,
+          golonganTarif: regMatch.golonganTarif || '2A1 - Rumah Tangga Standard (R2)',
+          nomorMeter: regMatch.dataPasang?.noSeriMeter || 'AET-2609-001',
+          periodeBulan: 'Maret 2026',
+          tanggalJatuhTempo: '20 Maret 2026',
+          standLalu: 0,
+          standKini: 0,
+          pemakaianM3: 0,
+          rincianBlok: { blok1M3: 0, blok1Tarif: 0, blok1Total: 0, blok2M3: 0, blok2Tarif: 0, blok2Total: 0, blok3M3: 0, blok3Tarif: 0, blok3Total: 0 },
+          biayaAir: 0,
+          biayaPemeliharaanMeter: 12500,
+          biayaAdministrasi: 5000,
+          retribusi: 0,
+          denda: 0,
+          totalTagihan: 142600,
+          status: 'BELUM LUNAS',
+        };
+      }
+    }
+
+    if (!found) return null;
+
+    // Apply Demo Variations based on demoState
+    if (demoState === 'WARNING_TEMPORARY_SEAL') {
       return {
-        id: `bill-reg-${regMatch.noForm}`,
-        idPelanggan: regMatch.idPelanggan || '10842918',
-        noSr: regMatch.noSr || '168392',
-        nama: regMatch.namaKtp,
-        alamat: `${regMatch.alamatPasang || regMatch.alamatKtp} RT/RW ${regMatch.rtRwPasang || regMatch.rtRwKtp}`,
-        golonganTarif: regMatch.golonganTarif || '2A1 - Rumah Tangga Standard (R2)',
-        nomorMeter: regMatch.dataPasang?.noSeriMeter || 'AET-2609-001',
-        periodeBulan: 'Maret 2026',
-        tanggalJatuhTempo: '20 Maret 2026',
-        standLalu: 0,
-        standKini: 0,
-        pemakaianM3: 0,
-        rincianBlok: { blok1M3: 0, blok1Tarif: 0, blok1Total: 0, blok2M3: 0, blok2Tarif: 0, blok2Total: 0, blok3M3: 0, blok3Tarif: 0, blok3Total: 0 },
-        biayaAir: 0,
-        biayaPemeliharaanMeter: 12500,
-        biayaAdministrasi: 5000,
-        retribusi: 0,
-        denda: 0,
-        totalTagihan: 142600,
-        status: (regMatch.skemaPembayaran === 'Lunas' ? 'LUNAS' : 'BELUM LUNAS') as 'BELUM LUNAS' | 'LUNAS',
+        ...found,
+        status: 'BELUM LUNAS' as const,
+        periodeBulan: 'Februari & Maret 2026 (Tunggakan 1 Bulan)',
+        totalTagihan: 284500,
+        denda: 25000,
+        tanggalJatuhTempo: '20 Februari 2026 (Lewat Jatuh Tempo)',
       };
     }
 
-    return null;
-  }, [activeQuery, bills, registrations]);
+    if (demoState === 'DANGER_PERMANENT_DISCONNECT') {
+      return {
+        ...found,
+        status: 'BELUM LUNAS' as const,
+        periodeBulan: 'Akumulasi 5 Bulan (November 2025 - Maret 2026)',
+        totalTagihan: 964200,
+        denda: 150000,
+        tanggalJatuhTempo: '20 November 2025 (Menunggak 5 Bulan)',
+      };
+    }
+
+    return found;
+  }, [activeQuery, bills, registrations, demoState]);
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -163,7 +202,7 @@ export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
           </h1>
 
           <p className="text-xs sm:text-sm text-blue-100/90 leading-relaxed">
-            Cukup masukkan <strong>ID Pelanggan</strong> Anda di bawah ini untuk melihat total tagihan air dan status pembayaran terkini.
+            Cukup masukkan <strong>ID Pelanggan</strong> Anda di bawah ini untuk melihat total tagihan air, riwayat pembayaran, serta status penertiban sambungan.
           </p>
         </div>
 
@@ -220,9 +259,193 @@ export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
         </div>
       </div>
 
+      {/* ========================================================= */}
+      {/* INTERACTIVE DEMO SCENARIO SWITCHER (FITUR SIMULASI SANKSI) */}
+      {/* ========================================================= */}
+      <div className="bg-slate-900 text-white p-4 rounded-3xl border border-slate-800 shadow-md space-y-2.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <span className="text-xs font-black text-amber-300 uppercase tracking-wider">
+              Simulasi Fitur Peringatan Keterlambatan &amp; Pemutusan (Demo Bar):
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-400">
+            Klik tombol di bawah untuk menguji simulasi status penertiban rekening air:
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {/* Normal State */}
+          <button
+            type="button"
+            onClick={() => setDemoState('NORMAL')}
+            className={`p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+              demoState === 'NORMAL'
+                ? 'bg-emerald-950/80 border-emerald-400 text-emerald-200 ring-2 ring-emerald-500/40 shadow-sm'
+                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div>
+              <strong className="text-xs block font-bold">1. Status Normal / Lancar</strong>
+              <span className="text-[10px] text-slate-400">Pembayaran bulan berjalan normal</span>
+            </div>
+          </button>
+
+          {/* Demo 1: Belum Bayar Bulan Lalu (Peringatan Segel Sementara) */}
+          <button
+            type="button"
+            onClick={() => setDemoState('WARNING_TEMPORARY_SEAL')}
+            className={`p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+              demoState === 'WARNING_TEMPORARY_SEAL'
+                ? 'bg-amber-950/90 border-amber-400 text-amber-200 ring-2 ring-amber-500/40 shadow-sm'
+                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 animate-bounce" />
+            <div>
+              <strong className="text-xs block font-bold text-amber-300">2. Demo: Peringatan Segel (1 Bln)</strong>
+              <span className="text-[10px] text-slate-400">Potensi Temporary Disconnection</span>
+            </div>
+          </button>
+
+          {/* Demo 2: Menunggak 5 Bulan (Pemutusan Permanen) */}
+          <button
+            type="button"
+            onClick={() => setDemoState('DANGER_PERMANENT_DISCONNECT')}
+            className={`p-3 rounded-2xl border text-left transition cursor-pointer flex items-center gap-2.5 ${
+              demoState === 'DANGER_PERMANENT_DISCONNECT'
+                ? 'bg-rose-950/90 border-rose-400 text-rose-200 ring-2 ring-rose-500/40 shadow-sm'
+                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+            }`}
+          >
+            <Ban className="w-4 h-4 text-rose-400 shrink-0" />
+            <div>
+              <strong className="text-xs block font-bold text-rose-300">3. Demo: Pemutusan Permanen (5 Bln)</strong>
+              <span className="text-[10px] text-slate-400">Permanent Disconnection &amp; Cabut Pipa</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
       {/* Bill Result View */}
       {currentBill ? (
         <div className="space-y-6 animate-in zoom-in-95 duration-200 printable-slip">
+          {/* ========================================================= */}
+          {/* SANKSI BANNER 1: PERINGATAN SEGEL METER SEMENTARA         */}
+          {/* ========================================================= */}
+          {demoState === 'WARNING_TEMPORARY_SEAL' && (
+            <div className="bg-linear-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 p-5 sm:p-6 rounded-3xl shadow-lg border-2 border-amber-300 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-400/60 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-slate-950 text-amber-400 flex items-center justify-center shrink-0 shadow-sm">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-slate-950 text-white px-2 py-0.5 rounded-full">
+                      Peringatan Keterlambatan Pembayaran
+                    </span>
+                    <h3 className="text-base font-black text-slate-950 mt-0.5">
+                      POTENSI SEGEL METER AIR SEMENTARA (TEMPORARY DISCONNECTION)
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="inline-flex items-center gap-2 bg-slate-950 text-amber-300 px-3 py-1.5 rounded-xl text-xs font-mono font-bold shadow-xs">
+                  <Timer className="w-4 h-4 text-amber-400 animate-spin" />
+                  <span>Batas Waktu Pelunasan: 2x24 Jam</span>
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-900 space-y-2 leading-relaxed">
+                <p>
+                  Yth. Pelanggan <strong>{currentBill.nama} (ID: {currentBill.idPelanggan})</strong>, tagihan rekening air bulan lalu sebesar <strong>Rp {currentBill.totalTagihan.toLocaleString('id-ID')}</strong> belum terbayar dan telah melewati batas jatuh tempo tanggal 20.
+                </p>
+                <div className="bg-white/80 p-3.5 rounded-2xl border border-amber-300 space-y-1.5 font-medium text-slate-900">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-950">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>Konsekuensi Prosedur Penertiban Aetra:</span>
+                  </div>
+                  <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-800">
+                    <li>Tim penertiban lapangan dijadwalkan memasang <strong>Segel Pengunci Kran Sementara (Segel Kuning/Merah)</strong> dalam 3x24 jam.</li>
+                    <li>Pasokan aliran air akan dihentikan sementara hingga seluruh tunggakan dilunasi.</li>
+                    <li>Segera lakukan pelunasan melalui gerai Indomaret, Alfamart, ATM atau Mobile Banking untuk pembukaan blokir otomatis tanpa denda tambahan.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* SANKSI BANNER 2: PEMUTUSAN SAMBUNGAN PERMANEN (5 BULAN)   */}
+          {/* ========================================================= */}
+          {demoState === 'DANGER_PERMANENT_DISCONNECT' && (
+            <div className="bg-linear-to-r from-red-950 via-rose-950 to-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-xl border-2 border-red-500 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-800/80 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-md animate-pulse">
+                    <Ban className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-red-600 text-white px-2.5 py-0.5 rounded-full">
+                      STATUS KRITIS PENERTIBAN HUKUM
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-red-200 mt-0.5">
+                      PEMUTUSAN SAMBUNGAN PERMANEN (PERMANENT DISCONNECTION)
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="bg-red-900/80 text-red-200 px-3 py-1.5 rounded-xl text-xs font-bold border border-red-600/60 flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-red-400" />
+                  <span>Menunggak 5 Bulan Berturut-turut</span>
+                </div>
+              </div>
+
+              <div className="text-xs text-red-100 space-y-3 leading-relaxed">
+                <p>
+                  Berdasarkan Peraturan Pelayanan Pelanggan PT Aetra Air Tangerang, permohonan sambungan air atas nama <strong>{currentBill.nama}</strong> dengan ID Pelanggan <strong>{currentBill.idPelanggan}</strong> telah diterbitkan <strong>Surat Ketetapan Pemutusan Sambungan Permanen</strong> akibat tunggakan 5 bulan berturut-turut.
+                </p>
+
+                <div className="bg-white/10 p-4 rounded-2xl border border-red-500/50 space-y-2">
+                  <span className="text-[10px] font-black uppercase text-red-300 tracking-wider block">
+                    Tindakan Penertiban Operasional:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                    <div className="bg-black/30 p-2.5 rounded-xl border border-red-800/50 space-y-1">
+                      <strong className="text-red-300 block">1. Pembongkaran Pipa Dinas</strong>
+                      <span className="text-slate-300">Pipa dinas telah dicabut dan diputus total dari pipa distribusi utama.</span>
+                    </div>
+                    <div className="bg-black/30 p-2.5 rounded-xl border border-red-800/50 space-y-1">
+                      <strong className="text-red-300 block">2. Penarikan Water Meter SNI</strong>
+                      <span className="text-slate-300">Meteran air dan nomor segel telah ditarik ke gudang operasional kantor Aetra.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-red-900/40 p-3.5 rounded-2xl border border-red-700/60 text-[11px] text-red-200 space-y-1">
+                  <span className="font-bold text-red-300 block">Syarat Permohonan Penyambungan Kembali (Re-aktivasi):</span>
+                  <ol className="list-decimal list-inside space-y-0.5 text-slate-200">
+                    <li>Melunasi seluruh akumulasi tunggakan 5 bulan (Rp 964.200,-) beserta denda keterlambatan di Loket Kas Resmi.</li>
+                    <li>Datang langsung ke <strong>Kantor Pusat Curug</strong> atau <strong>Kantor Cabang Pasar Kemis</strong> untuk mengajukan permohonan pemasangan baru (Re-registrasi).</li>
+                    <li>Membayar biaya buka segel / biaya instalasi baru sesuai ketentuan golongan tarif.</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <a
+                  href="tel:0215985474"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black shadow-md transition"
+                >
+                  <PhoneCall className="w-4 h-4" />
+                  <span>Hubungi Loket Kasir Penertiban: (021) 598 5474</span>
+                </a>
+              </div>
+            </div>
+          )}
+
           {/* Main Card: Ringkasan Tagihan */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden">
             {/* Card Header */}
@@ -243,7 +466,17 @@ export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
 
               {/* Status Badge */}
               <div className="flex items-center gap-2 self-start sm:self-auto">
-                {currentBill.status === 'LUNAS' ? (
+                {demoState === 'DANGER_PERMANENT_DISCONNECT' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-900 text-xs font-black border border-red-300 shadow-xs">
+                    <Ban className="w-4 h-4 text-red-600" />
+                    PUTUS PERMANEN (5 BULAN)
+                  </span>
+                ) : demoState === 'WARNING_TEMPORARY_SEAL' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-black border border-amber-300 shadow-xs animate-pulse">
+                    <Lock className="w-4 h-4 text-amber-700" />
+                    MENUNGGU PELUNASAN (PERINGATAN SEGEL)
+                  </span>
+                ) : currentBill.status === 'LUNAS' ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black border border-emerald-300 shadow-xs">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     LUNAS
@@ -332,8 +565,8 @@ export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
                   <span className="text-slate-400 font-semibold block text-[10px] uppercase">
                     Status Rekening
                   </span>
-                  <span className={`font-bold block mt-0.5 ${currentBill.status === 'LUNAS' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                    {currentBill.status === 'LUNAS' ? '✓ Sudah Dibayar' : '⏳ Belum Dibayar'}
+                  <span className={`font-bold block mt-0.5 ${currentBill.status === 'LUNAS' && demoState === 'NORMAL' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    {currentBill.status === 'LUNAS' && demoState === 'NORMAL' ? '✓ Sudah Dibayar' : '⏳ Belum Dibayar'}
                   </span>
                 </div>
 
@@ -348,7 +581,7 @@ export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
               </div>
 
               {/* Payment Proof Details if already paid */}
-              {currentBill.status === 'LUNAS' && (
+              {currentBill.status === 'LUNAS' && demoState === 'NORMAL' && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-emerald-900">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div className="space-y-1">

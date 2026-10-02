@@ -70,7 +70,7 @@ export const MeterReaderProgressSection: React.FC<MeterReaderProgressSectionProp
 
       if (!assignedReader || assignedReader === 'Belum Ditugaskan') {
         const found = meterReaders.find((r) =>
-          r.assignedCycles.some((ac) => ac.toLowerCase() === cName.toLowerCase())
+          (r.assignedCycles || []).some((ac: string) => ac.toLowerCase() === cName.toLowerCase())
         );
         if (found) {
           assignedReader = found.nama;
@@ -109,7 +109,7 @@ export const MeterReaderProgressSection: React.FC<MeterReaderProgressSectionProp
   const readerStats = useMemo(() => {
     return meterReaders.map((reader) => {
       const assigned = cycleProgressList.filter((item) =>
-        reader.assignedCycles.some((ac) => ac.toLowerCase() === item.cycle.toLowerCase())
+        (reader.assignedCycles || []).some((ac: string) => ac.toLowerCase() === item.cycle.toLowerCase())
       );
       const totalIndustri = assigned.reduce((acc, curr) => acc + curr.total, 0);
       const totalCompleted = assigned.reduce((acc, curr) => acc + curr.completed, 0);

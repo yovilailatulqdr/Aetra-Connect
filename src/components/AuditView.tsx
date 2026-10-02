@@ -51,7 +51,8 @@ export const AuditView: React.FC<AuditViewProps> = ({ logs, onClearLogs }) => {
   }, [logs]);
 
   // Helper to parse log date string (formats: '25 Sep 2026 ...' or '25/09/2026' or '2026-09-25')
-  const parseLogDate = (timeStr: string) => {
+  const parseLogDate = (timeStr?: string) => {
+    if (!timeStr) return null;
     // Check if starts with dd Mon yyyy (e.g., 25 Sep 2026)
     const matchDmy = timeStr.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
     if (matchDmy) {
@@ -97,39 +98,43 @@ export const AuditView: React.FC<AuditViewProps> = ({ logs, onClearLogs }) => {
     return logs.filter((log) => {
       // 1. Text Search
       const q = searchTxt.toLowerCase().trim();
+      const logDesc = log.desc || '';
+      const logUser = log.user || '';
+      const logRole = log.role || '';
+      const logTime = log.time || log.timestamp || '';
       const matchSearch =
         !q ||
-        log.desc.toLowerCase().includes(q) ||
-        log.user.toLowerCase().includes(q) ||
-        log.role.toLowerCase().includes(q) ||
-        log.time.toLowerCase().includes(q);
+        logDesc.toLowerCase().includes(q) ||
+        logUser.toLowerCase().includes(q) ||
+        logRole.toLowerCase().includes(q) ||
+        logTime.toLowerCase().includes(q);
 
       // 2. User Filter
       const matchUser =
         userFilter === 'ALL' ||
-        log.user.toLowerCase().trim() === userFilter.toLowerCase().trim();
+        logUser.toLowerCase().trim() === userFilter.toLowerCase().trim();
 
       // 3. Calendar Date Filter (exact date from <input type="date" />)
       let matchCalendarDate = true;
       if (selectedCalendarDate) {
-        const parsed = parseLogDate(log.time);
+        const parsed = parseLogDate(logTime);
         if (parsed) {
           matchCalendarDate = parsed.isoDate === selectedCalendarDate;
         } else {
           // fallback string match
-          matchCalendarDate = log.time.includes(selectedCalendarDate);
+          matchCalendarDate = logTime.includes(selectedCalendarDate);
         }
       }
 
       // 4. Month Filter
       let matchMonth = true;
       if (selectedMonth !== 'ALL') {
-        const parsed = parseLogDate(log.time);
+        const parsed = parseLogDate(logTime);
         if (parsed) {
           const selectedMonthNum = selectedMonth.slice(0, 2);
           matchMonth = parsed.monthNum === selectedMonthNum;
         } else {
-          matchMonth = log.time.toLowerCase().includes(selectedMonth.toLowerCase());
+          matchMonth = logTime.toLowerCase().includes(selectedMonth.toLowerCase());
         }
       }
 

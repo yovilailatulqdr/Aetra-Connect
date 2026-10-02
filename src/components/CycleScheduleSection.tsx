@@ -46,7 +46,7 @@ export const CycleScheduleSection: React.FC<CycleScheduleSectionProps> = ({
     let defaultKategori: ReaderCategory | undefined = undefined;
 
     const readerForCycle = meterReaders.find((r) =>
-      r.assignedCycles.some((ac) => ac.toLowerCase() === cName.toLowerCase())
+      r.assignedCycles.some((ac: string) => ac.toLowerCase() === cName.toLowerCase())
     );
     if (readerForCycle) {
       defaultPetugas = readerForCycle.nama;

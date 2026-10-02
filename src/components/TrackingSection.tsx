@@ -205,7 +205,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
   // =========================================================
   const currentStatus = getStepStatusBadge(selectedRecord.currentStep);
   const customerDisplayName = selectedRecord.nama.split('/')[0].trim();
-  const progressPercent = selectedRecord.currentStep * 25;
+  const progressPercent = Math.round((selectedRecord.currentStep / 5) * 100);
 
   // Match with existing registration data to ensure Petugas Lapangan in Tracking matches the form input
   const matchingReg = useMemo(() => {
@@ -230,7 +230,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
     ? `${matchingReg.dataPasang.panjangPipa} Meter (${matchingReg.dataPasang.panjangPipaTipe || 'Standard'})`
     : (selectedRecord.panjangPipaDinas || '4.5 Meter (Standar s/d 6m)');
 
-  // Clean, authoritative, non-repetitive milestone history (Hanya menampilkan tahap yang sudah dicapai)
+  // Clean, authoritative, non-repetitive milestone history
   const milestones = React.useMemo(() => {
     if (!selectedRecord) return [];
 
@@ -274,7 +274,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
       },
       {
         step: 4,
-        title: 'Pemasangan Meteran Pelanggan',
+        title: 'Pemasangan Meteran & Segel Resmi',
         subtitle: 'Instalasi Water Meter SNI & Pemasangan Segel Resmi',
         description: `Pekerjaan pemasangan meteran pelanggan (${displayMeter || 'AET-2609-8472'}) dan penguncian segel kran resmi (${displaySegel || 'SGL-AAT-88192'}) di persil rumah selesai dilaksanakan.`,
         date: regDate,
@@ -285,7 +285,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
       },
       {
         step: 5,
-        title: 'Air Bersih Mengalir & Pemasangan Selesai',
+        title: 'Air Bersih Mengalir & Sambungan Aktif',
         subtitle: 'Uji Tekanan Aliran & Sambungan Aktif Resmi',
         description: `Uji coba tekanan dan debit air minum telah lulus uji standar Permenkes No. 492/2010. Air bersih resmi mengalir lancar dan ID Pelanggan aktif.`,
         date: estDate,
@@ -296,13 +296,12 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
       },
     ];
 
-    // JANGAN tampilkan tahapan yang belum dilalui. Tampilkan HANYA tahapan yang sudah dilewati dan tahapan saat ini.
     return allSteps.filter((item) => item.step <= currentStepNum);
-  }, [selectedRecord]);
+  }, [selectedRecord, surveyorName, teknisiName, displayMeter, displaySegel]);
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
+      {/* Top Banner with SLA Highlight */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -315,8 +314,17 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Lacak progres pemasangan sambungan air bersih PT Aetra Air Tangerang secara transparan dan akurat untuk akun Anda.
+            Lacak progres pemasangan sambungan air bersih PT Aetra Air Tangerang secara transparan dan akurat. <strong className="text-slate-900 font-extrabold">Maksimal estimasi 14-30 hari kerja</strong> sejak pendaftaran dinyatakan lengkap dan terverifikasi.
           </p>
+        </div>
+
+        {/* SLA Highlight Badge */}
+        <div className="bg-blue-50 border-2 border-blue-200/80 px-3.5 py-2 rounded-xl flex items-center gap-2.5 shadow-2xs">
+          <Calendar className="w-4 h-4 text-[#005DAA] shrink-0" />
+          <div className="text-xs leading-tight">
+            <span className="text-[10px] text-slate-500 font-semibold block uppercase">Standar Pelayanan:</span>
+            <strong className="text-[#005DAA] font-black">Maksimal estimasi 14-30 hari kerja</strong>
+          </div>
         </div>
       </div>
 
@@ -333,7 +341,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                 key={rec.noForm}
                 type="button"
                 onClick={() => handleSelectCustomerRecord(rec)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border shrink-0 transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border shrink-0 transition flex items-center gap-1.5 cursor-pointer ${
                   isSelected
                     ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold shadow-xs'
                     : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -342,7 +350,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                 <span>#{rec.noForm}</span>
                 <span className="text-slate-400">&bull;</span>
                 <span className="max-w-[140px] truncate">{rec.alamat.split(',')[0]}</span>
-                {rec.currentStep === 4 ? (
+                {rec.currentStep === 5 ? (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 ) : (
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -404,27 +412,27 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
           </div>
         </div>
 
-        {/* 4-Step Visual Progress Bar */}
+        {/* 5-Step Visual Progress Bar */}
         <div>
           <div className="flex items-center justify-between mb-3 text-xs font-semibold text-slate-600">
             <span className="flex items-center gap-1.5 text-blue-900 font-bold">
               <Compass className="w-4 h-4 text-blue-600" />
-              Tahapan Pemasangan Sambungan
+              Tahapan Pemasangan Sambungan Air
             </span>
             <span className="font-mono text-[#005DAA] font-bold">
-              Progres: {progressPercent}% ({selectedRecord.currentStep} dari 4 Tahap)
+              Progres: {progressPercent}% ({selectedRecord.currentStep} dari 5 Tahap)
             </span>
           </div>
 
           {/* Progress Bar Line */}
           <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mb-5">
             <div 
-              className="bg-linear-to-r from-[#005DAA] to-[#F37021] h-full transition-all duration-500 rounded-full"
+              className="bg-linear-to-r from-[#005DAA] via-[#0080FF] to-[#F37021] h-full transition-all duration-500 rounded-full"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
 
-          {/* 5 Step Blocks */}
+          {/* 5 Step Interactive Blocks */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {[
               {
@@ -437,7 +445,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
               },
               {
                 stepNum: 2,
-                title: '2. Pembayaran',
+                title: '2. Pembayaran Biaya',
                 desc: 'Pelunasan Biaya Pasang Resmi',
                 date: selectedRecord.steps[1]?.updatedAt || 'Menunggu',
                 completed: (selectedRecord.currentStep || 1) >= 2,
@@ -445,16 +453,16 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
               },
               {
                 stepNum: 3,
-                title: '3. SPKO Kontraktor',
-                desc: 'Tahap pengerjaan dari kontraktor',
+                title: '3. SPKO & Pipa Dinas',
+                desc: 'Pekerjaan kontraktor pipa dinas',
                 date: selectedRecord.steps[2]?.updatedAt || 'Menunggu',
                 completed: (selectedRecord.currentStep || 1) >= 3,
                 isCurrent: (selectedRecord.currentStep || 1) === 3,
               },
               {
                 stepNum: 4,
-                title: '4. Pasang Meteran',
-                desc: 'Pemasangan meteran pelanggan',
+                title: '4. Pasang Meter & Segel',
+                desc: 'Instalasi water meter & segel',
                 date: selectedRecord.steps[3]?.updatedAt || 'Menunggu',
                 completed: (selectedRecord.currentStep || 1) >= 4,
                 isCurrent: (selectedRecord.currentStep || 1) === 4,
@@ -463,16 +471,16 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                 stepNum: 5,
                 title: '5. Air Mengalir',
                 desc: 'Segel Resmi & Siap Pakai',
-                date: selectedRecord.estimasiSelesai || 'Estimasi',
+                date: selectedRecord.estimasiSelesai || 'Estimasi Selesai',
                 completed: (selectedRecord.currentStep || 1) >= 5,
                 isCurrent: (selectedRecord.currentStep || 1) === 5,
               },
             ].map((item) => (
               <div
                 key={item.stepNum}
-                className={`p-3.5 rounded-xl border transition ${
+                className={`p-3.5 rounded-xl border transition cursor-default ${
                   item.isCurrent
-                    ? 'bg-blue-50/80 border-blue-400 shadow-xs ring-1 ring-blue-300'
+                    ? 'bg-blue-50/90 border-blue-400 shadow-xs ring-2 ring-blue-300/60'
                     : item.completed
                     ? 'bg-emerald-50/50 border-emerald-300'
                     : 'bg-slate-50 border-slate-200 text-slate-400'
@@ -481,9 +489,9 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                 <div className="flex items-center justify-between mb-1.5">
                   <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                     item.completed && !item.isCurrent
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
                       : item.isCurrent
-                      ? 'bg-blue-600 text-white animate-pulse'
+                      ? 'bg-blue-600 text-white animate-pulse shadow-2xs'
                       : 'bg-slate-200 text-slate-500'
                   }`}>
                     {item.completed && !item.isCurrent ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : item.stepNum}
@@ -500,6 +508,21 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* SLA & Guarantee Highlight Box */}
+        <div className="p-4 bg-linear-to-r from-blue-50 via-sky-50 to-indigo-50/60 rounded-xl border border-blue-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#005DAA] text-white flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Standar Pelayanan Minimal (SLA):</span>
+              <p className="text-slate-900 font-medium">
+                Penyambungan pipa dinas dan water meter diproses dengan <strong className="text-[#005DAA] font-black">maksimal estimasi 14-30 hari kerja</strong> terhitung sejak pembayaran terkonfirmasi.
+              </p>
+            </div>
           </div>
         </div>
 

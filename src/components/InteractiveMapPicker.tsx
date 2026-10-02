@@ -115,12 +115,14 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       attributionControl: false,
     });
 
-    // Clean Google Maps-style Street Map Tile Layer
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
+    // Modern Crisp Tile Layers (CartoDB Voyager: modern Apple Maps / Google Maps look)
+    const voyagerLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      subdomains: 'abcd',
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
     });
 
-    streetLayer.addTo(map);
+    voyagerLayer.addTo(map);
 
     // Add Draggable Marker
     const marker = L.marker([lat, lng], {
@@ -137,7 +139,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       setCurrentLat(newLat);
       setCurrentLng(newLng);
       onLocationChange(String(newLat), String(newLng));
-      setStatusNote(`Titik diperbarui: ${newLat}, ${newLng}`);
+      setStatusNote(`Titik koordinat: ${newLat}, ${newLng}`);
     });
 
     // Map Click Handler
@@ -149,7 +151,7 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         setCurrentLat(newLat);
         setCurrentLng(newLng);
         onLocationChange(String(newLat), String(newLng));
-        setStatusNote(`Pin dipindahkan ke: ${newLat}, ${newLng}`);
+        setStatusNote(`Pin dipindahkan: ${newLat}, ${newLng}`);
       });
     }
 
@@ -194,8 +196,9 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     });
 
     if (layer === 'streets') {
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        subdomains: 'abcd',
       }).addTo(mapInstanceRef.current);
     } else {
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {

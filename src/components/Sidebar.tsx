@@ -90,8 +90,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'faq',
-          label: 'Panduan & FAQ',
-          sublabel: 'Tarif, Berkas & Ketentuan',
+          label: 'FAQ',
+          sublabel: 'Pertanyaan, Tarif & Ketentuan',
           icon: BookOpen,
         },
       ];
@@ -115,8 +115,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'faq',
-          label: 'Panduan & FAQ',
-          sublabel: 'Tarif, Berkas & Ketentuan',
+          label: 'FAQ',
+          sublabel: 'Pertanyaan, Tarif & Ketentuan',
           icon: BookOpen,
         },
       ];
@@ -134,8 +134,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'faq',
-          label: 'Panduan & FAQ',
-          sublabel: 'Tarif, Berkas & Ketentuan',
+          label: 'FAQ',
+          sublabel: 'Pertanyaan, Tarif & Ketentuan',
           icon: BookOpen,
         },
       ];
@@ -152,8 +152,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       },
       {
         id: 'faq',
-        label: 'Panduan & FAQ',
-        sublabel: 'Tarif, Berkas & Ketentuan',
+        label: 'FAQ',
+        sublabel: 'Pertanyaan, Tarif & Ketentuan',
         icon: BookOpen,
       },
     ];

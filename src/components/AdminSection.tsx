@@ -45,6 +45,7 @@ import {
   BarChart3,
   ThumbsUp,
   Database,
+  Gauge,
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { exportCustomersToExcel, downloadExcelTemplate, exportSurveysToExcel } from '../utils/excelService';
@@ -57,10 +58,11 @@ interface AdminSectionProps {
   registrations: RegistrationFormData[];
   trackingRecords: CustomerTrackingRecord[];
   surveys?: SurveySubmission[];
-  onUpdateTrackingStep: (noForm: string, nextStep: 1 | 2 | 3 | 4, adminNote?: string) => void;
+  onUpdateTrackingStep: (noForm: string, nextStep: 1 | 2 | 3 | 4 | 5, adminNote?: string) => void;
   onUpdateTechnicalData?: (
     noForm: string,
     data: {
+      idPelanggan?: string;
       nomorMeter?: string;
       nomorSegel?: string;
       petugasSurveyor?: string;
@@ -69,7 +71,7 @@ interface AdminSectionProps {
       adminNotes?: string;
     }
   ) => void;
-  onApproveRegistration?: (noForm: string, nomorPembayaran: string, biayaSambungan: number, adminNotes?: string) => void;
+  onApproveRegistration?: (noForm: string, nomorPembayaran: string, biayaSambungan: number, adminNotes?: string, idPelanggan?: string) => void;
   onRejectRegistration?: (noForm: string, reason: string) => void;
   onViewReceipt?: (record: RegistrationFormData) => void;
   onNavigateToTracking: (noForm: string) => void;
@@ -248,7 +250,8 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
     noForm: string;
     nama: string;
     noSr: string;
-    currentStep: 1 | 2 | 3 | 4;
+    idPelanggan?: string;
+    currentStep: 1 | 2 | 3 | 4 | 5;
     nomorMeter: string;
     nomorSegel: string;
     petugasSurveyor: string;
@@ -264,7 +267,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
       const step = tracking ? tracking.currentStep : (reg.trackingStep || 1);
       return {
         ...reg,
-        currentStep: step as 1 | 2 | 3 | 4,
+        currentStep: (step || 1) as 1 | 2 | 3 | 4 | 5,
         trackingRecord: tracking,
       };
     });
@@ -277,10 +280,11 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
     const step2 = combinedList.filter((r) => r.currentStep === 2).length;
     const step3 = combinedList.filter((r) => r.currentStep === 3).length;
     const step4 = combinedList.filter((r) => r.currentStep === 4).length;
+    const step5 = combinedList.filter((r) => r.currentStep === 5).length;
     const totalRevenue = combinedList.reduce((acc, curr) => acc + (curr.biayaSambungan || 1371545), 0);
     const paidCount = combinedList.filter((r) => r.currentStep >= 2).length;
 
-    return { total, step1, step2, step3, step4, totalRevenue, paidCount };
+    return { total, step1, step2, step3, step4, step5, totalRevenue, paidCount };
   }, [combinedList]);
 
   // Paid customers list for WA Blast feature
@@ -422,6 +426,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
       noForm: item.noForm,
       nama: item.namaKtp,
       noSr: item.noSr,
+      idPelanggan: item.idPelanggan || item.trackingRecord?.idPelanggan || ('10' + (item.noForm || '123456').replace(/\D/g, '').padEnd(6, '0')),
       currentStep: item.currentStep,
       nomorMeter: item.trackingRecord?.nomorMeter || item.dataPasang?.noSeriMeter || '',
       nomorSegel: item.trackingRecord?.nomorSegel || item.dataPasang?.noSegel || '',
@@ -432,15 +437,16 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
     });
   };
 
-  const handleQuickChangeStep = (noForm: string, newStep: 1 | 2 | 3 | 4, customerName: string) => {
+  const handleQuickChangeStep = (noForm: string, newStep: 1 | 2 | 3 | 4 | 5, customerName: string) => {
     const stepNames: Record<number, string> = {
       1: 'Tahap 1: Verifikasi Berkas',
-      2: 'Tahap 2: Persetujuan Teknis & Pembayaran',
-      3: 'Tahap 3: Pemasangan Pipa & Meter Air',
-      4: 'Tahap 4: Sambungan Aktif & Air Bersih Mengalir',
+      2: 'Tahap 2: Pembayaran Biaya Sambungan',
+      3: 'Tahap 3: Penerbitan SPKO & Pipa Dinas',
+      4: 'Tahap 4: Pemasangan Meter & Segel Resmi',
+      5: 'Tahap 5: Sambungan Aktif & Air Mengalir',
     };
     onUpdateTrackingStep(noForm, newStep);
-    showToast(`Status No. Form ${noForm} (${customerName}) berhasil dirubah manual oleh Admin ke "${stepNames[newStep]}". Live tracking pelanggan kini otomatis ter-update.`);
+    showToast(`Status No. Form ${noForm} (${customerName}) berhasil dirubah manual oleh Admin ke "${stepNames[newStep]}". Live tracking pelanggan kini otomatis sinkron.`);
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -449,13 +455,15 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
 
     const stepNames: Record<number, string> = {
       1: 'Tahap 1: Verifikasi Berkas',
-      2: 'Tahap 2: Persetujuan Teknis & Pembayaran',
-      3: 'Tahap 3: Pemasangan Pipa & Meter Air',
-      4: 'Tahap 4: Sambungan Aktif & Air Bersih Mengalir',
+      2: 'Tahap 2: Pembayaran Biaya Sambungan',
+      3: 'Tahap 3: Penerbitan SPKO & Pipa Dinas',
+      4: 'Tahap 4: Pemasangan Meter & Segel Resmi',
+      5: 'Tahap 5: Sambungan Aktif & Air Mengalir',
     };
 
     onUpdateTrackingStep(editingRecord.noForm, editingRecord.currentStep);
     onUpdateTechnicalData?.(editingRecord.noForm, {
+      idPelanggan: editingRecord.idPelanggan,
       nomorMeter: editingRecord.nomorMeter,
       nomorSegel: editingRecord.nomorSegel,
       petugasSurveyor: editingRecord.petugasSurveyor,
@@ -568,55 +576,65 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
       {adminSubTab === 'registrations' ? (
         <>
           {/* KPI Cards Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Total Pengajuan */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold">Total Pengajuan</span>
             <Users className="w-4 h-4 text-[#005DAA]" />
           </div>
-          <div className="text-2xl font-black text-slate-900">{stats.total}</div>
-          <div className="text-[11px] text-slate-500">Permohonan terdaftar</div>
+          <div className="text-xl font-black text-slate-900">{stats.total}</div>
+          <div className="text-[10px] text-slate-500">Permohonan terdaftar</div>
         </div>
 
         {/* Tahap 1: Verifikasi Berkas */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">1. Berkas Masuk</span>
+            <span className="text-xs font-semibold">1. Berkas</span>
             <Clock className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-black text-amber-600">{stats.step1}</div>
-          <div className="text-[11px] text-slate-500">Verifikasi dokumen</div>
+          <div className="text-xl font-black text-amber-600">{stats.step1}</div>
+          <div className="text-[10px] text-slate-500">Verifikasi dokumen</div>
         </div>
 
         {/* Tahap 2: Pembayaran */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-semibold">2. Pembayaran</span>
             <CreditCard className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-[#005DAA]">{stats.step2}</div>
-          <div className="text-[11px] text-slate-500">Menunggu / konfirmasi</div>
+          <div className="text-xl font-black text-[#005DAA]">{stats.step2}</div>
+          <div className="text-[10px] text-slate-500">Menunggu / konfirmasi</div>
         </div>
 
-        {/* Tahap 3: Pemasangan */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
+        {/* Tahap 3: SPKO Pipa Dinas */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">3. Pemasangan Pipa</span>
+            <span className="text-xs font-semibold">3. SPKO &amp; Pipa</span>
             <Wrench className="w-4 h-4 text-[#F37021]" />
           </div>
-          <div className="text-2xl font-black text-[#F37021]">{stats.step3}</div>
-          <div className="text-[11px] text-slate-500">Instalasi teknisi</div>
+          <div className="text-xl font-black text-[#F37021]">{stats.step3}</div>
+          <div className="text-[10px] text-slate-500">Pekerjaan pipa dinas</div>
         </div>
 
-        {/* Tahap 4: Selesai */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1 col-span-2 sm:col-span-1">
+        {/* Tahap 4: Pasang Meter & Segel */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-semibold">4. Air Mengalir</span>
+            <span className="text-xs font-semibold">4. Pasang Meter</span>
+            <Gauge className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="text-xl font-black text-indigo-600">{stats.step4}</div>
+          <div className="text-[10px] text-slate-500">Water meter &amp; segel</div>
+        </div>
+
+        {/* Tahap 5: Selesai (Air Mengalir) */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold">5. Air Mengalir</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600">{stats.step4}</div>
-          <div className="text-[11px] text-slate-500">Aktif &amp; bersegel resmi</div>
+          <div className="text-xl font-black text-emerald-600">{stats.step5}</div>
+          <div className="text-[10px] text-slate-500">Sambungan aktif resmi</div>
         </div>
       </div>
 
@@ -719,10 +737,11 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                 {[
                   { id: 'all', label: 'Semua' },
                   { id: 'paid', label: `★ Pelanggan Lunas (${stats.paidCount})` },
-                  { id: '1', label: '1. Pendaftaran' },
+                  { id: '1', label: '1. Verifikasi' },
                   { id: '2', label: '2. Pembayaran' },
-                  { id: '3', label: '3. Pemasangan' },
-                  { id: '4', label: '4. Selesai' },
+                  { id: '3', label: '3. SPKO & Pipa' },
+                  { id: '4', label: '4. Pasang Meter' },
+                  { id: '5', label: '5. Selesai' },
                 ].map((flt) => (
                   <button
                     key={flt.id}
@@ -821,10 +840,11 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                   ) : (
                     filteredList.map((item) => {
                       const stepColors: Record<number, { bg: string; text: string; label: string }> = {
-                        1: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', label: '1. Pendaftaran Berkas' },
+                        1: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', label: '1. Verifikasi Berkas' },
                         2: { bg: 'bg-blue-50 border-blue-200', text: 'text-[#005DAA]', label: '2. Pembayaran Biaya' },
-                        3: { bg: 'bg-orange-50 border-orange-200', text: 'text-[#F37021]', label: '3. Pemasangan Pipa' },
-                        4: { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', label: '4. Air Mengalir' },
+                        3: { bg: 'bg-orange-50 border-orange-200', text: 'text-[#F37021]', label: '3. SPKO & Pipa Dinas' },
+                        4: { bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-800', label: '4. Pasang Meter & Segel' },
+                        5: { bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-800', label: '5. Selesai (Air Mengalir)' },
                       };
                       const currColor = stepColors[item.currentStep] || stepColors[1];
                       const meterNo = item.trackingRecord?.nomorMeter || item.dataPasang?.noSeriMeter;
@@ -896,7 +916,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                                   onChange={(e) =>
                                     handleQuickChangeStep(
                                       item.noForm,
-                                      Number(e.target.value) as 1 | 2 | 3 | 4,
+                                      Number(e.target.value) as 1 | 2 | 3 | 4 | 5,
                                       item.namaKtp
                                     )
                                   }
@@ -905,8 +925,9 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                                 >
                                   <option value={1}>1. Verifikasi Berkas</option>
                                   <option value={2}>2. Pembayaran Biaya</option>
-                                  <option value={3}>3. Pemasangan Pipa/Meter</option>
-                                  <option value={4}>4. Selesai (Air Mengalir)</option>
+                                  <option value={3}>3. SPKO &amp; Pipa Dinas</option>
+                                  <option value={4}>4. Pasang Meter &amp; Segel</option>
+                                  <option value={5}>5. Selesai (Air Mengalir)</option>
                                 </select>
                                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-current opacity-70 text-[9px]">
                                   ▼
@@ -1293,12 +1314,13 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">
                   Tahap Progres Pemasangan
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
-                    { step: 1, label: '1. Pendaftaran Berkas' },
-                    { step: 2, label: '2. Pembayaran Lunas' },
-                    { step: 3, label: '3. Pemasangan Pipa' },
-                    { step: 4, label: '4. Air Mengalir / Selesai' },
+                    { step: 1, label: '1. Verifikasi Berkas' },
+                    { step: 2, label: '2. Pembayaran Biaya' },
+                    { step: 3, label: '3. SPKO & Pipa Dinas' },
+                    { step: 4, label: '4. Pasang Meter & Segel' },
+                    { step: 5, label: '5. Selesai (Air Mengalir)' },
                   ].map((s) => (
                     <button
                       key={s.step}
@@ -1308,7 +1330,7 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                           prev
                             ? {
                                 ...prev,
-                                currentStep: s.step as 1 | 2 | 3 | 4,
+                                currentStep: s.step as 1 | 2 | 3 | 4 | 5,
                                 statusPembayaran: s.step >= 2 ? 'Lunas' : prev.statusPembayaran,
                               }
                             : null
@@ -1324,6 +1346,39 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* ID Pelanggan Manual Input */}
+              <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-200">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-800 block text-xs">
+                    Nomor ID Pelanggan (Kode Bayar / Identitas Tetap)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingRecord((prev) =>
+                        prev
+                          ? { ...prev, idPelanggan: '10' + Math.floor(100000 + Math.random() * 900000) }
+                          : null
+                      )
+                    }
+                    className="text-[10px] text-emerald-800 hover:underline font-bold"
+                  >
+                    Generate ID Otomatis
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={editingRecord.idPelanggan || ''}
+                  onChange={(e) =>
+                    setEditingRecord((prev) =>
+                      prev ? { ...prev, idPelanggan: e.target.value.replace(/\s+/g, '') } : null
+                    )
+                  }
+                  placeholder="Contoh: 10842918"
+                  className="w-full p-2.5 rounded-xl border border-emerald-300 bg-white font-mono text-xs font-black text-emerald-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                />
               </div>
 
               {/* Status Pembayaran */}
@@ -1499,17 +1554,19 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm text-white ${
                     viewingFullRecord.currentStep === 1 ? 'bg-amber-500' :
                     viewingFullRecord.currentStep === 2 ? 'bg-[#005DAA]' :
-                    viewingFullRecord.currentStep === 3 ? 'bg-[#F37021]' : 'bg-emerald-600'
+                    viewingFullRecord.currentStep === 3 ? 'bg-[#F37021]' :
+                    viewingFullRecord.currentStep === 4 ? 'bg-indigo-600' : 'bg-emerald-600'
                   }`}>
                     T{viewingFullRecord.currentStep}
                   </div>
                   <div>
                     <div className="text-[10px] text-slate-400 uppercase font-semibold">Status Tahap Proses Saat Ini</div>
                     <div className="text-sm font-bold text-slate-900">
-                      {viewingFullRecord.currentStep === 1 && 'Tahap 1: Verifikasi Berkas & Jalur Pipa'}
-                      {viewingFullRecord.currentStep === 2 && 'Tahap 2: Menunggu / Konfirmasi Pembayaran Biaya'}
-                      {viewingFullRecord.currentStep === 3 && 'Tahap 3: Pemasangan Fisik Pipa Dinas & Meter Air'}
-                      {viewingFullRecord.currentStep === 4 && 'Tahap 4: Selesai — Sambungan Aktif & Air Mengalir'}
+                      {viewingFullRecord.currentStep === 1 && 'Tahap 1: Verifikasi Berkas & Identitas'}
+                      {viewingFullRecord.currentStep === 2 && 'Tahap 2: Pembayaran Biaya Sambungan'}
+                      {viewingFullRecord.currentStep === 3 && 'Tahap 3: Penerbitan SPKO & Penarikan Pipa Dinas'}
+                      {viewingFullRecord.currentStep === 4 && 'Tahap 4: Pemasangan Meter & Segel Resmi'}
+                      {viewingFullRecord.currentStep === 5 && 'Tahap 5: Sambungan Aktif & Air Bersih Mengalir'}
                     </div>
                   </div>
                 </div>

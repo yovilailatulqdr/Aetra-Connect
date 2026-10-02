@@ -66,7 +66,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
         catatan: `Faktur tagihan diterbitkan oleh ${currentUser.name} (${new Date().toLocaleDateString('id-ID')})`
       };
 
-      const mailto = `mailto:${encodeURIComponent(customer.email)}?subject=${encodeURIComponent(
+      const mailto = `mailto:${encodeURIComponent(customer.email || 'billing@aetra.co.id')}?subject=${encodeURIComponent(
         `Tagihan Air Industri PT Aetra Air Tangerang - ${customer.id} (${customer.nama})`
       )}&body=${encodeURIComponent(
         `Kepada Yth. Bagian Keuangan / Finance\n${customer.nama}\nID Pelanggan: ${customer.id}\n\nBerikut kami sampaikan rincian tagihan pemakaian air bersih PT Aetra Air Tangerang periode ${customer.bulan}:\n\n- Stand Meter Lalu: ${lalu.toLocaleString()} m³\n- Stand Meter Sekarang: ${currentStand.toLocaleString()} m³\n- Total Pemakaian: ${vol.toLocaleString()} m³\n- Tarif Air Industri: Rp 12.500 / m³\n- Biaya Pemakaian Air: Rp ${estTagihan.toLocaleString()}\n- Bea Materai: Rp ${materai.toLocaleString()}\n- TOTAL TAGIHAN: Rp ${totalTagihan.toLocaleString()}\n\nFaktur resmi PDF dapat diunduh dan dicetak melalui lampiran invoice.\n\nAtas kerja sama yang baik, kami ucapkan terima kasih.\n\nSalam hormat,\nTim Billing & Invoicing\nPT Aetra Air Tangerang`
@@ -111,7 +111,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   const minHistoryVal = Math.min(...historyData, currentStand);
   const chartHeight = 70;
   const chartWidth = 320;
-  const points = historyData.map((val, idx) => {
+  const points = historyData.map((val: number, idx: number) => {
     const x = (idx / (historyData.length - 1 || 1)) * (chartWidth - 20) + 10;
     const y = chartHeight - ((val - minHistoryVal) / (maxHistoryVal - minHistoryVal || 1)) * (chartHeight - 20) - 10;
     return `${x},${y}`;
@@ -322,7 +322,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                   strokeLinejoin="round"
                   points={points}
                 />
-                {historyData.map((val, idx) => {
+                {historyData.map((val: number, idx: number) => {
                   const x = (idx / (historyData.length - 1 || 1)) * (chartWidth - 20) + 10;
                   const y =
                     chartHeight -
