@@ -2,12 +2,23 @@ export type TabType = 'registration' | 'tracking' | 'billing' | 'survey' | 'faq'
 export type UserRole = 'customer' | 'admin';
 export type RegistrationStatus = 
   | 'NEW_USER' 
+  | 'REGISTERED'
   | 'VERIFYING' 
   | 'WAITING_PAYMENT' 
+  | 'PAYMENT_PENDING'
   | 'PAYMENT_CONFIRMED'
+  | 'PAYMENT_VERIFIED'
   | 'INSTALLATION_TRACKING' 
   | 'ACTIVE_CUSTOMER'
+  | 'COMPLETED'
   | 'REJECTED';
+
+export type PaymentStatusType = 
+  | 'Belum Ditagihkan' 
+  | 'Menunggu Verifikasi Berkas' 
+  | 'Menunggu Pembayaran' 
+  | 'Menunggu Verifikasi Kasir' 
+  | 'Lunas';
 
 export interface PaymentProofData {
   dataUrl: string;
@@ -250,7 +261,7 @@ export interface RegistrationFormData {
   status_pendaftaran?: RegistrationStatus;
   nomorPembayaran?: string;
   nomor_pembayaran?: string;
-  statusPembayaran?: 'Belum Ditagihkan' | 'Menunggu Pembayaran' | 'Menunggu Verifikasi Kasir' | 'Lunas';
+  statusPembayaran?: PaymentStatusType;
   paymentProof?: PaymentProofData;
   isSkAccepted?: boolean;
   is_sk_accepted?: boolean;
@@ -265,6 +276,8 @@ export interface RegistrationFormData {
   persetujuan: boolean;
   // Status Tracking Terkait (1 s/d 5)
   trackingStep: 1 | 2 | 3 | 4 | 5;
+  currentStep?: 1 | 2 | 3 | 4 | 5;
+  trackingRecord?: CustomerTrackingRecord;
   createdAt: string;
 }
 

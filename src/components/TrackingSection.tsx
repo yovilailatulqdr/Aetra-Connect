@@ -16,6 +16,9 @@ import {
   FileCheck2,
   Calendar,
   ShieldCheck,
+  Receipt,
+  Wrench,
+  Gauge
 } from 'lucide-react';
 
 interface TrackingSectionProps {
@@ -23,7 +26,7 @@ interface TrackingSectionProps {
   registrations?: RegistrationFormData[];
   activeFormNumber?: string;
   onSelectCustomer?: (noForm: string) => void;
-  onUpdateTrackingStep?: (noForm: string, nextStep: 1 | 2 | 3 | 4) => void;
+  onUpdateTrackingStep?: (noForm: string, nextStep: 1 | 2 | 3 | 4 | 5) => void;
   onNavigateToRegister?: () => void;
   onQuickDemoRegister?: () => void;
   onNavigateToAdmin?: (noForm?: string) => void;
@@ -63,7 +66,6 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
       }
     }
 
-    // Default to the newest record
     setSelectedRecord(trackingRecords[0]);
   }, [activeFormNumber, trackingRecords]);
 
@@ -74,44 +76,38 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
     }
   };
 
-  const handleAdvanceStep = (targetStep: 1 | 2 | 3 | 4) => {
-    if (selectedRecord && onUpdateTrackingStep) {
-      onUpdateTrackingStep(selectedRecord.noForm, targetStep);
-    }
-  };
-
   // Status badge config
   const getStepStatusBadge = (step: 1 | 2 | 3 | 4 | 5) => {
     switch (step) {
       case 1:
         return {
           label: 'Tahap 1: Verifikasi Berkas',
-          badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
-          desc: 'Formulir diterima, proses verifikasi identitas & pengecekan jalur pipa',
+          badgeClass: 'bg-blue-50 text-[#005DAA] border-blue-200',
+          desc: 'Formulir diterima, proses verifikasi identitas e-KTP & survei teknis pipa',
         };
       case 2:
         return {
           label: 'Tahap 2: Menunggu Pembayaran',
           badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
-          desc: 'Berkas disetujui, silakan lakukan pembayaran via kanal resmi',
+          desc: 'Nomor pembayaran telah diterbitkan, menunggu pelunasan biaya sambungan',
         };
       case 3:
         return {
-          label: 'Tahap 3: SPKO & Pengerjaan Kontraktor',
+          label: 'Tahap 3: SPKO & Pengerjaan Pipa Dinas',
           badgeClass: 'bg-orange-50 text-[#F37021] border-orange-200',
-          desc: 'Tahap pengerjaan dari kontraktor untuk pipa dinas',
+          desc: 'Tahap pengerjaan dari kontraktor untuk pipa dinas dan galian persil',
         };
       case 4:
         return {
-          label: 'Tahap 4: Pemasangan Meteran Pelanggan',
+          label: 'Tahap 4: Proses Pemasangan Meteran',
           badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-          desc: 'Teknisi memasang water meter dan segel kran resmi di persil',
+          desc: 'Teknisi memasang water meter dan segel kran resmi di persil rumah',
         };
       case 5:
         return {
           label: 'Tahap 5: Sambungan Aktif & Air Mengalir',
           badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-          desc: 'Pemasangan rampung, meter aktif dan air bersih resmi mengalir',
+          desc: 'Pemasangan rampung, meter aktif dan air bersih resmi mengalir 24 jam',
         };
       default:
         return {
@@ -128,7 +124,6 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
   if (trackingRecords.length === 0 || !selectedRecord) {
     return (
       <div className="space-y-6">
-        {/* Banner */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
@@ -147,7 +142,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
         </div>
 
         {/* Empty State Card */}
-        <div className="bg-white rounded-2xl p-10 border border-slate-200 shadow-xs text-center max-w-2xl mx-auto space-y-6">
+        <div className="bg-white rounded-3xl p-10 border border-slate-200 shadow-xs text-center max-w-2xl mx-auto space-y-6">
           <div className="w-20 h-20 rounded-3xl bg-blue-50 text-[#005DAA] border border-blue-100 flex items-center justify-center mx-auto shadow-xs">
             <Package className="w-10 h-10 stroke-[1.5]" />
           </div>
@@ -157,43 +152,26 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
               Belum Ada Sambungan Baru yang Terdaftar
             </h3>
             <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-              Data pelacakan sambungan baru akan otomatis muncul di sini begitu Anda mengisi dan mengirimkan Formulir Pendaftaran Sambungan Baru.
+              Data pelacakan sambungan baru Anda akan otomatis tampil di sini begitu Anda mengirimkan Formulir Pendaftaran Sambungan Baru.
             </p>
           </div>
 
-          {/* Explanation 4 Steps */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left pt-2">
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-              <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px] mb-2">
-                1
-              </span>
-              <span className="font-bold text-slate-800 block text-[11px]">Pendaftaran</span>
-              <span className="text-[10px] text-slate-500">Verifikasi berkas &amp; KTP</span>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-              <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-[11px] mb-2">
-                2
-              </span>
-              <span className="font-bold text-slate-800 block text-[11px]">Pembayaran</span>
-              <span className="text-[10px] text-slate-500">Pelunasan biaya pasang</span>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-              <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-[11px] mb-2">
-                3
-              </span>
-              <span className="font-bold text-slate-800 block text-[11px]">Pemasangan</span>
-              <span className="text-[10px] text-slate-500">Instalasi pipa &amp; meter</span>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-              <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-[11px] mb-2">
-                4
-              </span>
-              <span className="font-bold text-slate-800 block text-[11px]">Air Mengalir</span>
-              <span className="text-[10px] text-slate-500">Segel resmi &amp; aktif</span>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-left pt-2">
+            {[
+              { num: 1, title: 'Verifikasi', desc: 'Identitas & Dokumen' },
+              { num: 2, title: 'Pembayaran', desc: 'Konfirmasi Biaya' },
+              { num: 3, title: 'SPKO & Pipa', desc: 'Pengerjaan Dinas' },
+              { num: 4, title: 'Pasang Meter', desc: 'Meteran & Segel' },
+              { num: 5, title: 'Air Mengalir', desc: 'Siap Digunakan' },
+            ].map((s) => (
+              <div key={s.num} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                <span className="w-6 h-6 rounded-full bg-[#005DAA] text-white flex items-center justify-center font-bold text-[11px] mb-2">
+                  {s.num}
+                </span>
+                <span className="font-bold text-slate-800 block text-[11px]">{s.title}</span>
+                <span className="text-[10px] text-slate-500">{s.desc}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -207,132 +185,116 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
   const customerDisplayName = selectedRecord.nama.split('/')[0].trim();
   const progressPercent = Math.round((selectedRecord.currentStep / 5) * 100);
 
-  // Match with existing registration data to ensure Petugas Lapangan in Tracking matches the form input
-  const matchingReg = useMemo(() => {
-    if (!selectedRecord) return null;
-    return registrations.find(
-      (r) =>
-        r.noForm === selectedRecord.noForm ||
-        (selectedRecord.idPelanggan && r.idPelanggan === selectedRecord.idPelanggan)
-    );
-  }, [selectedRecord, registrations]);
+  const matchingReg = registrations.find(
+    (r) =>
+      r.noForm === selectedRecord.noForm ||
+      (selectedRecord.idPelanggan && r.idPelanggan === selectedRecord.idPelanggan)
+  );
 
-  // Dynamic Petugas Lapangan derived from registration form or tracking record
   const surveyorName = matchingReg?.dataPasang?.namaSales?.trim() || selectedRecord.petugasSurveyor?.nama || 'Bpk. Hendra Gunawan';
   const surveyorId = matchingReg?.dataPasang?.noWorkOrder?.trim() ? `SRV-${matchingReg.dataPasang.noWorkOrder.trim()}` : (selectedRecord.petugasSurveyor?.id || 'SRV-042');
-  const teknisiName = matchingReg?.dataPasang?.namaTeknisi?.trim() || matchingReg?.dataPasang?.namaKontraktor?.trim() || selectedRecord.petugasTeknisi?.nama || 'Bpk. Agus Santoso';
+  const teknisiName = matchingReg?.dataPasang?.namaTeknisi?.trim() || matchingReg?.dataPasang?.namaKontraktor?.trim() || selectedRecord.petugasTeknisi?.nama || 'Bpk. Ahmad Syafiq';
   const teknisiId = selectedRecord.petugasTeknisi?.id || 'TKN-AET-018';
   const petugasPhone = matchingReg?.dataPasang?.telpPetugas?.trim() || selectedRecord.petugasTeknisi?.telp || '0877-8822-4645';
   const cleanPhone = petugasPhone.replace(/\D/g, '').replace(/^0/, '62');
   const displayMeter = matchingReg?.dataPasang?.noSeriMeter?.trim() || selectedRecord.nomorMeter;
   const displaySegel = matchingReg?.dataPasang?.noSegel?.trim() || selectedRecord.nomorSegel;
   const displayPanjangPipa = matchingReg?.dataPasang?.panjangPipa?.trim()
-    ? `${matchingReg.dataPasang.panjangPipa} Meter (${matchingReg.dataPasang.panjangPipaTipe || 'Standard'})`
-    : (selectedRecord.panjangPipaDinas || '4.5 Meter (Standar s/d 6m)');
+    ? `${matchingReg.dataPasang.panjangPipa} Meter (${matchingReg.dataPasang.panjangPipaTipe || 'HDPE PE-100'})`
+    : (selectedRecord.panjangPipaDinas || '6 Meter (Standar)');
 
-  // Clean, authoritative, non-repetitive milestone history
-  const milestones = React.useMemo(() => {
-    if (!selectedRecord) return [];
-
-    const regDate = selectedRecord.tanggalDaftar || '21 Sep 2026';
-    const estDate = selectedRecord.estimasiSelesai || '26 Sep 2026';
-    const currentStepNum = selectedRecord.currentStep || 1;
-
-    const allSteps = [
-      {
-        step: 1,
-        title: 'Verifikasi Berkas & Administrasi',
-        subtitle: 'Pengecekan Identitas, KTP & Lokasi Persil',
-        description: `Formulir permohonan sambungan baru (SR: ${selectedRecord.noSr}) berhasil didaftarkan dan berkas identitas pemohon telah diverifikasi lengkap oleh tim administrasi Aetra.`,
-        date: regDate,
-        time: '09:15 WIB',
-        actor: `Petugas Verifikator Administrasi (${surveyorName})`,
-        isCompleted: currentStepNum > 1,
-        isCurrent: currentStepNum === 1,
-      },
-      {
-        step: 2,
-        title: 'Persetujuan Teknis & Konfirmasi Pembayaran',
-        subtitle: 'Penetapan Golongan Tarif & Biaya Sambungan Baru',
-        description: `Pembayaran biaya sambungan baru sebesar Rp ${(selectedRecord.biayaSambungan || 1371545).toLocaleString('id-ID')} telah dikonfirmasi sah. Berkas disetujui untuk penerbitan SPKO fisik.`,
-        date: regDate,
-        time: '14:20 WIB',
-        actor: 'Billing & Keuangan PT Aetra Air Tangerang',
-        isCompleted: currentStepNum > 2,
-        isCurrent: currentStepNum === 2,
-      },
-      {
-        step: 3,
-        title: 'Penerbitan SPKO & Tahap Pengerjaan dari Kontraktor',
-        subtitle: 'Penyambungan Pipa Dinas ke Jaringan Distribusi Utama',
-        description: `Surat Perintah Kerja Operasional (SPKO) diterbitkan. Tahap pengerjaan dari kontraktor mitra resmi Aetra untuk penarikan pipa dinas dan galian jalur sambungan.`,
-        date: regDate,
-        time: '10:00 WIB',
-        actor: `Kontraktor Rekanan Aetra (${teknisiName})`,
-        isCompleted: currentStepNum > 3,
-        isCurrent: currentStepNum === 3,
-      },
-      {
-        step: 4,
-        title: 'Pemasangan Meteran & Segel Resmi',
-        subtitle: 'Instalasi Water Meter SNI & Pemasangan Segel Resmi',
-        description: `Pekerjaan pemasangan meteran pelanggan (${displayMeter || 'AET-2609-8472'}) dan penguncian segel kran resmi (${displaySegel || 'SGL-AAT-88192'}) di persil rumah selesai dilaksanakan.`,
-        date: regDate,
-        time: '13:45 WIB',
-        actor: `Teknisi Pemasangan Meter (${teknisiName})`,
-        isCompleted: currentStepNum > 4,
-        isCurrent: currentStepNum === 4,
-      },
-      {
-        step: 5,
-        title: 'Air Bersih Mengalir & Sambungan Aktif',
-        subtitle: 'Uji Tekanan Aliran & Sambungan Aktif Resmi',
-        description: `Uji coba tekanan dan debit air minum telah lulus uji standar Permenkes No. 492/2010. Air bersih resmi mengalir lancar dan ID Pelanggan aktif.`,
-        date: estDate,
-        time: '15:30 WIB',
-        actor: 'Pengawas Distribusi PT Aetra Air Tangerang',
-        isCompleted: currentStepNum >= 5,
-        isCurrent: currentStepNum === 5,
-      },
-    ];
-
-    return allSteps.filter((item) => item.step <= currentStepNum);
-  }, [selectedRecord, surveyorName, teknisiName, displayMeter, displaySegel]);
+  const milestones = [
+    {
+      step: 1,
+      title: 'Tahap 1: Verifikasi Berkas & Administrasi',
+      subtitle: 'Pengecekan Identitas e-KTP & Lokasi Persil',
+      description: `Formulir permohonan sambungan baru (SR: ${selectedRecord.noSr}) berhasil didaftarkan dan berkas identitas pemohon telah diverifikasi lengkap oleh Petugas Administrasi Aetra.`,
+      date: selectedRecord.tanggalDaftar || '21 Sep 2026',
+      time: '09:15 WIB',
+      actor: `Petugas Verifikator Administrasi (${surveyorName})`,
+      isCompleted: selectedRecord.currentStep > 1,
+      isCurrent: selectedRecord.currentStep === 1,
+    },
+    {
+      step: 2,
+      title: 'Tahap 2: Persetujuan Teknis & Konfirmasi Pembayaran',
+      subtitle: 'Nomor Pembayaran Diterbitkan & Pelunasan Biaya',
+      description: `Nomor Pembayaran diterbitkan. Pembayaran biaya sambungan baru sebesar Rp ${(selectedRecord.biayaSambungan || 1371545).toLocaleString('id-ID')} telah dikonfirmasi sah oleh Bagian Keuangan AETRA.`,
+      date: selectedRecord.tanggalDaftar || '21 Sep 2026',
+      time: '14:20 WIB',
+      actor: 'Kasir & Keuangan PT Aetra Air Tangerang',
+      isCompleted: selectedRecord.currentStep > 2,
+      isCurrent: selectedRecord.currentStep === 2,
+    },
+    {
+      step: 3,
+      title: 'Tahap 3: Penerbitan SPKO & Pekerjaan Pipa Dinas (Kontraktor)',
+      subtitle: 'Penyambungan Pipa Dinas ke Jaringan Distribusi Utama',
+      description: `Surat Perintah Kerja Operasional (SPKO) diterbitkan. Tahap pengerjaan dari kontraktor mitra resmi Aetra untuk penarikan pipa dinas dan galian jalur sambungan persil.`,
+      date: selectedRecord.tanggalDaftar || '22 Sep 2026',
+      time: '10:00 WIB',
+      actor: `Kontraktor Rekanan Aetra (${teknisiName})`,
+      isCompleted: selectedRecord.currentStep > 3,
+      isCurrent: selectedRecord.currentStep === 3,
+    },
+    {
+      step: 4,
+      title: 'Tahap 4: Proses Pemasangan Meteran',
+      subtitle: 'Instalasi Water Meter SNI & Pemasangan Segel Resmi',
+      description: `Pekerjaan proses pemasangan meteran pelanggan (${displayMeter || 'AET-2026-84720'}) dan penguncian segel kran resmi (${displaySegel || 'SGL-AAT-88192'}) di persil rumah selesai dilaksanakan.`,
+      date: selectedRecord.tanggalDaftar || '24 Sep 2026',
+      time: '13:45 WIB',
+      actor: `Teknisi Pemasangan Meter (${teknisiName})`,
+      isCompleted: selectedRecord.currentStep > 4,
+      isCurrent: selectedRecord.currentStep === 4,
+    },
+    {
+      step: 5,
+      title: 'Tahap 5: Air Bersih Mengalir & Sambungan Aktif',
+      subtitle: 'Uji Tekanan Aliran & Aktivasi ID Pelanggan Tetap',
+      description: `Uji coba tekanan dan debit air minum telah lulus uji standar Permenkes No. 2/2023. Air bersih resmi mengalir lancar 24 jam dan sambungan aktif.`,
+      date: selectedRecord.estimasiSelesai || '26 Sep 2026',
+      time: '15:30 WIB',
+      actor: 'Pengawas Distribusi PT Aetra Air Tangerang',
+      isCompleted: selectedRecord.currentStep >= 5,
+      isCurrent: selectedRecord.currentStep === 5,
+    },
+  ].filter((item) => item.step <= selectedRecord.currentStep);
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner with SLA Highlight */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+      {/* Top Banner with SINGLE Clean SLA Highlight */}
+      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-bold text-slate-900">
-              Tracking Sambungan Baru
+            <h2 className="text-lg sm:text-xl font-black text-slate-900">
+              Live Tracking Sambungan Baru
             </h2>
             <span className="relative flex h-2.5 w-2.5" title="Status Real-Time">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Lacak progres pemasangan sambungan air bersih PT Aetra Air Tangerang secara transparan dan akurat. <strong className="text-slate-900 font-extrabold">Maksimal estimasi 14-30 hari kerja</strong> sejak pendaftaran dinyatakan lengkap dan terverifikasi.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl">
+            Pantau progres tahapan penyambungan air bersih Anda secara transparan dan akurat.
           </p>
         </div>
 
-        {/* SLA Highlight Badge */}
-        <div className="bg-blue-50 border-2 border-blue-200/80 px-3.5 py-2 rounded-xl flex items-center gap-2.5 shadow-2xs">
-          <Calendar className="w-4 h-4 text-[#005DAA] shrink-0" />
+        {/* SATU-SATUNYA ESTIMASI PENGERJAAN RESMI */}
+        <div className="bg-blue-50 border-2 border-blue-200 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-2xs">
+          <Calendar className="w-5 h-5 text-[#005DAA] shrink-0" />
           <div className="text-xs leading-tight">
-            <span className="text-[10px] text-slate-500 font-semibold block uppercase">Standar Pelayanan:</span>
-            <strong className="text-[#005DAA] font-black">Maksimal estimasi 14-30 hari kerja</strong>
+            <span className="text-[10px] text-slate-500 font-bold uppercase block">Maksimal Estimasi Pengerjaan:</span>
+            <strong className="text-[#005DAA] font-black text-xs sm:text-sm">14 &ndash; 30 Hari Kerja</strong>
           </div>
         </div>
       </div>
 
-      {/* Switcher if user has multiple connections under their account */}
+      {/* Switcher ONLY if customer has multiple registrations in their own session */}
       {trackingRecords.length > 1 && (
         <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex items-center gap-3 overflow-x-auto no-scrollbar">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase shrink-0">
-            Sambungan Anda:
+          <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0">
+            Pilih Sambungan Anda:
           </span>
           {trackingRecords.map((rec) => {
             const isSelected = selectedRecord.noForm === rec.noForm;
@@ -341,9 +303,9 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                 key={rec.noForm}
                 type="button"
                 onClick={() => handleSelectCustomerRecord(rec)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border shrink-0 transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border shrink-0 transition flex items-center gap-1.5 cursor-pointer ${
                   isSelected
-                    ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold shadow-xs'
+                    ? 'bg-blue-50 border-blue-400 text-[#005DAA] shadow-xs ring-1 ring-[#005DAA]'
                     : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                 }`}
               >
@@ -351,9 +313,9 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                 <span className="text-slate-400">&bull;</span>
                 <span className="max-w-[140px] truncate">{rec.alamat.split(',')[0]}</span>
                 {rec.currentStep === 5 ? (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                 )}
               </button>
             );
@@ -362,27 +324,27 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
       )}
 
       {/* ========================================================= */}
-      {/* ORDER SUMMARY & STEPPER (CLEAN E-COMMERCE STYLE)          */}
+      {/* ORDER SUMMARY & STEPPER                                   */}
       {/* ========================================================= */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-6">
         {/* Top Header Card */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
                 ID Pelanggan:
               </span>
-              <span className="font-mono text-sm font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
+              <span className="font-mono text-sm font-black text-emerald-900 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 {selectedRecord.idPelanggan || ('10' + (selectedRecord.noForm || '123456').replace(/\D/g, '').padEnd(6, '0'))}
               </span>
-              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider ml-2">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider ml-2">
                 No. Form:
               </span>
               <span className="font-mono text-xs font-bold text-[#005DAA] bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200">
                 #{selectedRecord.noForm}
               </span>
-              <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider ml-2">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider ml-2">
                 No. SR:
               </span>
               <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
@@ -390,7 +352,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
               </span>
             </div>
 
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-lg sm:text-xl font-black text-slate-900">
               {customerDisplayName}
             </h3>
 
@@ -406,8 +368,8 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
               <span className="w-2 h-2 rounded-full bg-current animate-ping" />
               {currentStatus.label}
             </span>
-            <span className="text-[11px] text-slate-400">
-              {selectedRecord.tanggalDaftar ? `Didaftarkan: ${selectedRecord.tanggalDaftar}` : 'Terdaftar di sistem'}
+            <span className="text-[11px] text-slate-400 font-mono">
+              {selectedRecord.tanggalDaftar ? `Tgl Daftar: ${selectedRecord.tanggalDaftar}` : 'Terdaftar di sistem Aetra'}
             </span>
           </div>
         </div>
@@ -416,8 +378,8 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
         <div>
           <div className="flex items-center justify-between mb-3 text-xs font-semibold text-slate-600">
             <span className="flex items-center gap-1.5 text-blue-900 font-bold">
-              <Compass className="w-4 h-4 text-blue-600" />
-              Tahapan Pemasangan Sambungan Air
+              <Compass className="w-4 h-4 text-[#005DAA]" />
+              5 Tahapan Pemasangan Sambungan Air
             </span>
             <span className="font-mono text-[#005DAA] font-bold">
               Progres: {progressPercent}% ({selectedRecord.currentStep} dari 5 Tahap)
@@ -427,7 +389,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
           {/* Progress Bar Line */}
           <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mb-5">
             <div 
-              className="bg-linear-to-r from-[#005DAA] via-[#0080FF] to-[#F37021] h-full transition-all duration-500 rounded-full"
+              className="bg-gradient-to-r from-[#005DAA] via-[#0080FF] to-[#F37021] h-full transition-all duration-500 rounded-full"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -438,51 +400,46 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
               {
                 stepNum: 1,
                 title: '1. Verifikasi Berkas',
-                desc: 'Identitas & Dokumen Pemohon',
-                date: selectedRecord.steps[0]?.updatedAt || 'Selesai',
+                desc: 'Identitas & Dokumen KTP',
                 completed: (selectedRecord.currentStep || 1) >= 1,
                 isCurrent: (selectedRecord.currentStep || 1) === 1,
               },
               {
                 stepNum: 2,
                 title: '2. Pembayaran Biaya',
-                desc: 'Pelunasan Biaya Pasang Resmi',
-                date: selectedRecord.steps[1]?.updatedAt || 'Menunggu',
+                desc: 'Pelunasan Biaya Pasang',
                 completed: (selectedRecord.currentStep || 1) >= 2,
                 isCurrent: (selectedRecord.currentStep || 1) === 2,
               },
               {
                 stepNum: 3,
                 title: '3. SPKO & Pipa Dinas',
-                desc: 'Pekerjaan kontraktor pipa dinas',
-                date: selectedRecord.steps[2]?.updatedAt || 'Menunggu',
+                desc: 'Pekerjaan Pipa Kontraktor',
                 completed: (selectedRecord.currentStep || 1) >= 3,
                 isCurrent: (selectedRecord.currentStep || 1) === 3,
               },
               {
                 stepNum: 4,
-                title: '4. Pasang Meter & Segel',
-                desc: 'Instalasi water meter & segel',
-                date: selectedRecord.steps[3]?.updatedAt || 'Menunggu',
+                title: '4. Proses Pemasangan Meteran',
+                desc: 'Instalasi Meter & Segel',
                 completed: (selectedRecord.currentStep || 1) >= 4,
                 isCurrent: (selectedRecord.currentStep || 1) === 4,
               },
               {
                 stepNum: 5,
                 title: '5. Air Mengalir',
-                desc: 'Segel Resmi & Siap Pakai',
-                date: selectedRecord.estimasiSelesai || 'Estimasi Selesai',
+                desc: 'Sambungan Aktif 24 Jam',
                 completed: (selectedRecord.currentStep || 1) >= 5,
                 isCurrent: (selectedRecord.currentStep || 1) === 5,
               },
             ].map((item) => (
               <div
                 key={item.stepNum}
-                className={`p-3.5 rounded-xl border transition cursor-default ${
+                className={`p-3.5 rounded-2xl border transition ${
                   item.isCurrent
-                    ? 'bg-blue-50/90 border-blue-400 shadow-xs ring-2 ring-blue-300/60'
+                    ? 'bg-blue-50/90 border-[#005DAA] shadow-xs ring-2 ring-blue-300'
                     : item.completed
-                    ? 'bg-emerald-50/50 border-emerald-300'
+                    ? 'bg-emerald-50/60 border-emerald-300 text-emerald-950'
                     : 'bg-slate-50 border-slate-200 text-slate-400'
                 }`}
               >
@@ -491,13 +448,13 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                     item.completed && !item.isCurrent
                       ? 'bg-emerald-600 text-white shadow-2xs'
                       : item.isCurrent
-                      ? 'bg-blue-600 text-white animate-pulse shadow-2xs'
+                      ? 'bg-[#005DAA] text-white animate-pulse shadow-2xs'
                       : 'bg-slate-200 text-slate-500'
                   }`}>
                     {item.completed && !item.isCurrent ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : item.stepNum}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-500">
-                    {item.date}
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {item.completed ? 'Selesai' : item.isCurrent ? 'Proses' : 'Menunggu'}
                   </span>
                 </div>
                 <div className={`text-xs font-bold ${item.isCurrent ? 'text-blue-950' : item.completed ? 'text-emerald-950' : 'text-slate-600'}`}>
@@ -511,45 +468,28 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
           </div>
         </div>
 
-        {/* SLA & Guarantee Highlight Box */}
-        <div className="p-4 bg-linear-to-r from-blue-50 via-sky-50 to-indigo-50/60 rounded-xl border border-blue-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#005DAA] text-white flex items-center justify-center shrink-0">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Standar Pelayanan Minimal (SLA):</span>
-              <p className="text-slate-900 font-medium">
-                Penyambungan pipa dinas dan water meter diproses dengan <strong className="text-[#005DAA] font-black">maksimal estimasi 14-30 hari kerja</strong> terhitung sejak pembayaran terkonfirmasi.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Display notes if present */}
         {selectedRecord.adminNotes && (
-          <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+          <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-start gap-3">
             <AlertCircle className="w-4 h-4 text-[#F37021] shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold block text-amber-950">Catatan Resmi Petugas Lapangan:</span>
+              <span className="font-bold block text-amber-950">Catatan Petugas Lapangan:</span>
               <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">{selectedRecord.adminNotes}</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* ========================================================= */}
       {/* TWO COLUMNS: REAL-TIME TIMELINE LOGS & FIELD OFFICER CARD */}
-      {/* ========================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: REAL-TIME TIMELINE (ORDER TRACKING LOGS) */}
+        {/* LEFT COLUMN: REAL-TIME TIMELINE */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-[#005DAA]" />
                 <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                  Riwayat Pelacakan Real-Time
+                  Riwayat Aktivitas &amp; Log Pemasangan
                 </h4>
               </div>
               <span className="text-[11px] text-slate-400 font-mono">
@@ -559,73 +499,70 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
 
             {/* Timeline Feed */}
             <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-              {milestones.map((milestone) => {
-                return (
-                  <div key={milestone.step} className="relative group">
-                    {/* Dot indicator */}
-                    <div
-                      className={`absolute -left-6 top-1 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
-                        milestone.isCompleted
-                          ? 'bg-emerald-500 border-emerald-100 text-white'
-                          : milestone.isCurrent
-                          ? 'bg-[#005DAA] border-blue-200 text-white shadow-xs animate-pulse'
-                          : 'bg-slate-100 border-slate-300 text-slate-400'
-                      }`}
-                    >
-                      {milestone.isCompleted ? (
-                        <Check className="w-3 h-3 stroke-[3]" />
-                      ) : milestone.isCurrent ? (
-                        <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                      )}
-                    </div>
+              {milestones.map((milestone) => (
+                <div key={milestone.step} className="relative group">
+                  <div
+                    className={`absolute -left-6 top-1 w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                      milestone.isCompleted
+                        ? 'bg-emerald-500 border-emerald-100 text-white'
+                        : milestone.isCurrent
+                        ? 'bg-[#005DAA] border-blue-200 text-white shadow-xs animate-pulse'
+                        : 'bg-slate-100 border-slate-300 text-slate-400'
+                    }`}
+                  >
+                    {milestone.isCompleted ? (
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    ) : milestone.isCurrent ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                    )}
+                  </div>
 
-                    <div
-                      className={`p-4 rounded-xl border transition space-y-1.5 text-xs ${
-                        milestone.isCurrent
-                          ? 'bg-blue-50/70 border-blue-200 ring-1 ring-blue-300/40'
-                          : milestone.isCompleted
-                          ? 'bg-slate-50 group-hover:bg-blue-50/30 border-slate-200/80'
-                          : 'bg-slate-50/40 border-slate-200/50 opacity-70'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2 flex-wrap">
-                        <div className="font-bold text-slate-900 text-xs flex items-center gap-2">
-                          <span>{milestone.title}</span>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              milestone.isCompleted
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : milestone.isCurrent
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {milestone.isCompleted
-                              ? 'Selesai'
+                  <div
+                    className={`p-4 rounded-2xl border transition space-y-1.5 text-xs ${
+                      milestone.isCurrent
+                        ? 'bg-blue-50/80 border-blue-300 ring-1 ring-blue-300'
+                        : milestone.isCompleted
+                        ? 'bg-slate-50 group-hover:bg-blue-50/30 border-slate-200'
+                        : 'bg-slate-50/40 border-slate-200/50 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                        <span>{milestone.title}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            milestone.isCompleted
+                              ? 'bg-emerald-100 text-emerald-800'
                               : milestone.isCurrent
-                              ? 'Sedang Berjalan'
-                              : 'Tahap Berikutnya'}
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-slate-500 font-mono">
-                          {milestone.date} &bull; {milestone.time}
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {milestone.isCompleted
+                            ? 'Selesai'
+                            : milestone.isCurrent
+                            ? 'Sedang Berjalan'
+                            : 'Tahap Berikutnya'}
                         </span>
                       </div>
-
-                      <p className="text-slate-600 leading-relaxed text-xs">
-                        {milestone.description}
-                      </p>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        {milestone.date} &bull; {milestone.time}
+                      </span>
                     </div>
+
+                    <p className="text-slate-600 leading-relaxed text-xs">
+                      {milestone.description}
+                    </p>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Technical Specifications */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 text-xs">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-4 text-xs">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
               <Droplets className="w-4 h-4 text-[#005DAA]" />
               <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
@@ -634,30 +571,30 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                 <span className="text-slate-400 text-[11px] block">Nomor Seri Meter Air</span>
                 <span className="font-mono font-bold text-slate-900 text-xs">
-                  {displayMeter || (selectedRecord.currentStep >= 3 ? 'AET-2609-8472' : 'Menunggu Pemasangan Fisik')}
+                  {displayMeter || (selectedRecord.currentStep >= 3 ? 'AET-2026-84720' : 'Menunggu Pemasangan Fisik')}
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                 <span className="text-slate-400 text-[11px] block">Nomor Segel Kran Resmi</span>
                 <span className="font-mono font-bold text-slate-900 text-xs">
                   {displaySegel || (selectedRecord.currentStep >= 4 ? 'SGL-AAT-99120' : 'Menunggu Uji Pengaliran')}
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                 <span className="text-slate-400 text-[11px] block">Panjang Pipa Dinas</span>
                 <span className="font-bold text-slate-900 text-xs">
                   {displayPanjangPipa}
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="text-slate-400 text-[11px] block">Golongan Tarif</span>
-                <span className="font-bold text-slate-900 text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-slate-400 text-[11px] block">Golongan Tarif Resmi</span>
+                <span className="font-bold text-[#005DAA] text-xs">
                   {selectedRecord.golonganTarif || 'R2 = Rumah Tangga 2'}
                 </span>
               </div>
@@ -668,7 +605,7 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
         {/* RIGHT COLUMN: FIELD OFFICER & PAYMENT INFO */}
         <div className="lg:col-span-5 space-y-6">
           {/* Petugas Lapangan Ditugaskan */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-emerald-600" />
@@ -676,15 +613,15 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                   Petugas Lapangan Aetra
                 </h4>
               </div>
-              <span className="text-[10px] text-blue-800 bg-blue-50 px-2 py-0.5 rounded font-semibold border border-blue-200">
-                Sesuai Data Pendaftaran
+              <span className="text-[10px] text-blue-800 bg-blue-50 px-2.5 py-0.5 rounded-full font-bold border border-blue-200">
+                Resmi AAT
               </span>
             </div>
 
             {/* Teknisi Pemasangan */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-[#005DAA] text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-[#005DAA] text-white font-black flex items-center justify-center text-sm shadow-xs shrink-0">
                   {teknisiName.slice(0, 3).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -692,8 +629,8 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                     <h5 className="text-xs font-bold text-slate-900 truncate">
                       {teknisiName}
                     </h5>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">
-                      Bersertifikat
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                      Instalatur Resmi
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500">
@@ -705,107 +642,59 @@ export const TrackingSection: React.FC<TrackingSectionProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2">
+              <div className="pt-2 border-t border-slate-200 flex items-center gap-2">
                 <a
                   href={`https://wa.me/${cleanPhone}?text=Halo%20${encodeURIComponent(teknisiName)},%20saya%20pemilik%20No.%20Form%20${selectedRecord.noForm}%20ingin%20konfirmasi%20jadwal%20pemasangan%20sambungan%20air.`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-xs transition"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition"
                 >
                   <MessageCircle className="w-3.5 h-3.5 fill-white" />
                   Chat WhatsApp
                 </a>
                 <a
                   href={`tel:${petugasPhone.replace(/[^\d+]/g, '')}`}
-                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition"
+                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  Hubungi
+                  Telepon
                 </a>
               </div>
             </div>
 
             {/* Surveyor Wilayah */}
-            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200 text-xs flex items-center justify-between">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-slate-400 block">Surveyor Teknis Wilayah:</span>
                 <span className="font-bold text-slate-800">
                   {surveyorName}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+              <span className="text-[10px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 font-bold">
                 {surveyorId}
               </span>
             </div>
           </div>
 
-          {/* Informasi Akun Pelanggan & Layanan Bantuan Resmi */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#005DAA]" />
-                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                  Informasi Akun &amp; Bantuan
-                </h4>
+          {/* Kontak Bantuan Pelanggan */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-3 text-xs">
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2 pb-2 border-b border-slate-100">
+              <ShieldCheck className="w-4 h-4 text-[#005DAA]" />
+              <span>Contact Center 24 Jam Resmi</span>
+            </h4>
+            <div className="space-y-1.5 text-slate-600 text-xs">
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span>Call Center:</span>
+                <a href="tel:0215985474" className="font-bold text-[#005DAA]">(021) 598 5474</a>
               </div>
-              <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                selectedRecord.currentStep >= 2
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-800'
-              }`}>
-                {selectedRecord.currentStep >= 2 ? 'Lunas Terbayar' : 'Menunggu Pelunasan'}
-              </span>
-            </div>
-
-            {/* ID Pelanggan Highlight Box */}
-            <div className="p-3.5 bg-linear-to-r from-blue-50 to-indigo-50/50 border border-blue-200 rounded-xl space-y-1">
-              <span className="text-[11px] text-blue-900 font-semibold block">
-                ID Pelanggan Resmi (Nomor Pembayaran):
-              </span>
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono font-black text-lg text-[#005DAA] tracking-wider">
-                  {selectedRecord.idPelanggan || ('10' + (selectedRecord.noForm || '123456').replace(/\D/g, '').padEnd(6, '0'))}
-                </span>
-                <span className="text-[10px] bg-white px-2 py-0.5 rounded text-slate-600 font-bold border border-slate-200">
-                  ID Aetra Aktif
-                </span>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span>WhatsApp:</span>
+                <a href="https://wa.me/6287788224645" target="_blank" rel="noreferrer" className="font-bold text-emerald-600">0877 8822 4645</a>
               </div>
-              <p className="text-[11px] text-slate-600 mt-1">
-                Gunakan ID Pelanggan di atas saat melakukan pembayaran sambungan baru di kasir Indomaret/Alfamart, ATM/m-Banking, atau e-commerce.
-              </p>
-            </div>
-
-            {/* Hubungi Layanan Aetra */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <span className="text-[11px] font-bold text-slate-800 block uppercase tracking-wider">
-                Pusat Kontak Resmi PT Aetra Air Tangerang
-              </span>
-              <div className="space-y-1 text-[11px] text-slate-600">
-                <div className="flex items-center justify-between">
-                  <span>Call Center 24 Jam:</span>
-                  <a href="tel:0215985477" className="font-bold text-[#005DAA] hover:underline">021-5985477</a>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>WhatsApp Contact Center:</span>
-                  <a href="https://wa.me/6287788224645" target="_blank" rel="noreferrer" className="font-bold text-emerald-600 hover:underline">0877-8822-4645</a>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Email Bantuan:</span>
-                  <span className="font-mono text-slate-700">contact.center@aat.co.id</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Kantor Operasional:</span>
-                  <span className="text-slate-700 text-right">Curug, Tangerang</span>
-                </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span>Email Resmi:</span>
+                <span className="font-mono text-slate-800">pengaduan@aetratangerang.co.id</span>
               </div>
-            </div>
-
-            {/* Catatan Transparansi */}
-            <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-[11px] text-slate-600 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-              <span>
-                Rincian komponen biaya sambungan baru telah tercantum lengkap pada formulir pendaftaran. Pembayaran Anda akan otomatis diverifikasi oleh Admin Operasional Aetra.
-              </span>
             </div>
           </div>
         </div>

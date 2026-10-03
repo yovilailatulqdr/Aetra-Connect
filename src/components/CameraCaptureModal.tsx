@@ -6,7 +6,7 @@ interface CameraCaptureModalProps {
   onClose: () => void;
   onCapture: (dataUrl: string, fileName: string) => void;
   title?: string;
-  guideType?: 'document' | 'property' | 'general';
+  guideType?: 'document' | 'property' | 'general' | 'payment';
 }
 
 export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({

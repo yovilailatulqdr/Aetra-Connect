@@ -22,7 +22,10 @@ import {
 interface InteractiveMapPickerProps {
   initialLat?: string | number;
   initialLng?: string | number;
-  onLocationChange: (lat: string, lng: string) => void;
+  latitude?: string | number;
+  longitude?: string | number;
+  onLocationChange?: (lat: string, lng: string) => void;
+  onLocationSelect?: (lat: number | string, lng: number | string, address?: string) => void;
   readOnly?: boolean;
 }
 
@@ -44,15 +47,20 @@ const QUICK_AREAS = [
 export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
   initialLat,
   initialLng,
+  latitude,
+  longitude,
   onLocationChange,
+  onLocationSelect,
   readOnly = false,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
 
-  const parsedLat = initialLat ? parseFloat(String(initialLat)) : DEFAULT_LAT;
-  const parsedLng = initialLng ? parseFloat(String(initialLng)) : DEFAULT_LNG;
+  const effectiveLat = latitude ?? initialLat;
+  const effectiveLng = longitude ?? initialLng;
+  const parsedLat = effectiveLat ? parseFloat(String(effectiveLat)) : DEFAULT_LAT;
+  const parsedLng = effectiveLng ? parseFloat(String(effectiveLng)) : DEFAULT_LNG;
 
   const [currentLat, setCurrentLat] = useState<number>(!isNaN(parsedLat) && parsedLat !== 0 ? parsedLat : DEFAULT_LAT);
   const [currentLng, setCurrentLng] = useState<number>(!isNaN(parsedLng) && parsedLng !== 0 ? parsedLng : DEFAULT_LNG);
@@ -138,7 +146,8 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
       const newLng = parseFloat(position.lng.toFixed(6));
       setCurrentLat(newLat);
       setCurrentLng(newLng);
-      onLocationChange(String(newLat), String(newLng));
+      if (onLocationChange) onLocationChange(String(newLat), String(newLng));
+      if (onLocationSelect) onLocationSelect(newLat, newLng);
       setStatusNote(`Titik koordinat: ${newLat}, ${newLng}`);
     });
 
@@ -150,7 +159,8 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
         marker.setLatLng([newLat, newLng]);
         setCurrentLat(newLat);
         setCurrentLng(newLng);
-        onLocationChange(String(newLat), String(newLng));
+        if (onLocationChange) onLocationChange(String(newLat), String(newLng));
+        if (onLocationSelect) onLocationSelect(newLat, newLng);
         setStatusNote(`Pin dipindahkan: ${newLat}, ${newLng}`);
       });
     }
@@ -214,7 +224,8 @@ export const InteractiveMapPicker: React.FC<InteractiveMapPickerProps> = ({
     markerRef.current.setLatLng([lat, lng]);
     setCurrentLat(lat);
     setCurrentLng(lng);
-    onLocationChange(String(lat), String(lng));
+    if (onLocationChange) onLocationChange(String(lat), String(lng));
+    if (onLocationSelect) onLocationSelect(lat, lng, label);
     setStatusNote(`Peta diarahkan ke wilayah ${label}`);
   };
 

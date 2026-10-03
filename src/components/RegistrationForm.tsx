@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { RegistrationFormData, UploadedDoc, PropertyPhoto, UserAccount, PaymentProofData } from '../types';
+import { RegistrationFormData, UploadedDoc, UserAccount, PaymentProofData } from '../types';
 import { AetraLogo } from './AetraLogo';
 import { 
   CheckCircle2, 
@@ -17,387 +17,423 @@ import {
   ArrowRight, 
   ArrowLeft, 
   CheckCheck, 
-  Compass, 
   Clock, 
-  Copy,
-  Lock,
-  CreditCard,
-  Send,
-  ReceiptText
+  Copy, 
+  CreditCard, 
+  FileText,
+  Eye,
+  Store,
+  Building,
+  School,
+  Landmark,
+  ChevronDown,
+  ChevronUp,
+  Smartphone,
+  Wallet,
+  Building as BankIcon,
+  HelpCircle,
+  Sparkles,
+  ReceiptText,
+  CheckSquare
 } from 'lucide-react';
 import { CameraCaptureModal } from './CameraCaptureModal';
 import { InteractiveMapPicker } from './InteractiveMapPicker';
 import { calculateDomesticTariff } from '../data/domesticTariffs';
 import { INDONESIA_PROVINCES_DATA, AETRA_TANGERANG_INSTALLATION_REGIONS } from '../data/indonesiaRegions';
-import { BuildingEnvironmentFields } from './BuildingEnvironmentFields';
-import { PetugasOfficerFields } from './PetugasOfficerFields';
-import { DomesticTariffResultCard } from './DomesticTariffResultCard';
-import { saveRegistrationToDb } from '../services/supabaseService';
+import { TermsAndConditionsModal } from './TermsAndConditionsModal';
+import { DocumentImageViewerModal } from './DocumentImageViewerModal';
 
 export const SOSIAL_INSTANSI_OPTIONS = [
-  'Tempat Ibadah',
-  'Asrama Badan Sosial',
-  'Rumah Yatim Piatu',
-  'Kantor Instansi Pemerintah',
-  'Kantor Perwakilan Asing',
-  'Lembaga Swasta Non Komersial',
-  'Instansi Perguruan / Kursus Instansi',
-  'ABRI (TNI/POLRI)',
+  'Tempat Ibadah (Masjid / Gereja / Pura / Vihara)',
+  'Asrama Badan Sosial / Panti Asuhan',
+  'Rumah Yatim Piatu & Lembaga Kesejahteraan',
+  'Kantor Instansi Pemerintah / Balai Desa',
+  'Kantor Perwakilan Lembaga Asing / Konsulat',
+  'Lembaga Pendidikan Swasta / Yayasan Non Komersial',
+  'Instansi Perguruan Tinggi / Kursus Terdaftar',
+  'Fasilitas TNI / POLRI / Pos Keamanan',
 ];
 
 export const USAHA_OPTIONS = [
-  'Kios / Warung',
-  'Bengkel Kecil',
-  'Usaha Kecil',
-  'Pergudangan',
-  'Usaha Kecil Dalam Rumah Tangga',
-  'Tempat Pangkas Rambut',
-  'Bengkel Menengah',
-  'Usaha Menengah',
-  'Usaha Menengah Dalam Rumah Tangga',
-  'Penjahit',
-  'Rumah Makan / Restoran',
-  'RS. Swasta / Poliklinik / Lab',
-  'Praktek Dokter',
-  'Kantor Pengacara',
-  'Salon / Barbershop',
+  'Kios / Warung Kelontong',
+  'Bengkel Motor / Mobil Kecil',
+  'Usaha Kecil Mandiri',
+  'Pergudangan / Ekspedisi Logistik',
+  'Usaha Mikro Dalam Rumah Tangga (UMKM)',
+  'Tempat Pangkas Rambut / Salon Kecantikan',
+  'Bengkel Bubut / Mesin Menengah',
+  'Usaha Dagang & Toko Grosir Menengah',
+  'Konveksi / Industri Pakaian Rumah Tangga',
+  'Rumah Makan / Cafe / Restoran',
+  'RS. Swasta / Poliklinik / Laboratorium Medis',
+  'Praktek Dokter / Klinik Bersalin',
+  'Kantor Pengacara / Notaris / Konsultan',
   'Perusahaan Perdagangan / Niaga / Ruko',
+  'Pusat Kebugaran / Gym / Sarana Olahraga',
+  'Laundromat / Jasa Cuci Kiloan',
 ];
 
-export const getDraftKey = (user?: UserAccount | null) => {
-  if (!user) return 'aetra_draft_guest';
-  return `aetra_draft_${user.id || user.idPelanggan || user.email}`;
+export const getNextSrNumber = (existingList?: RegistrationFormData[]): string => {
+  try {
+    let list = existingList;
+    if (!list || list.length === 0) {
+      const saved = localStorage.getItem('aetra_registrations');
+      if (saved) {
+        list = JSON.parse(saved);
+      }
+    }
+    const baseNumber = 165050;
+    if (!list || list.length === 0) {
+      return String(baseNumber);
+    }
+    const srNumbers = list
+      .map((item) => {
+        const num = parseInt(item.noSr?.replace(/\D/g, '') || '', 10);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter((n) => n >= baseNumber);
+    if (srNumbers.length === 0) {
+      return String(baseNumber);
+    }
+    const maxSr = Math.max(...srNumbers);
+    return String(maxSr + 1);
+  } catch {
+    return '165050';
+  }
 };
 
-export const getEmptyFormData = (user?: UserAccount | null): RegistrationFormData => ({
-  id: 'reg-' + Date.now(),
-  noSr: '',
-  noForm: '',
-  idPelanggan: '',
-  tanggal: new Date().toISOString().split('T')[0],
-  namaKtp: user?.nama || '',
-  noKtp: '',
-  alamatKtp: '',
-  rtRwKtp: '',
-  kecamatanKtp: '',
-  desaKtp: '',
-  kodePosKtp: '',
-  kelurahanKtp: '',
-  kotaKtp: '',
-  provinsiKtp: '',
-  telpHp: '',
-  email: user?.email || '',
-  alamatPasang: '',
-  rtRwPasang: '',
-  kecamatanPasang: '',
-  desaPasang: '',
-  kodePosPasang: '',
-  kelurahanPasang: '',
-  kotaPasang: 'Kabupaten Tangerang',
-  provinsiPasang: 'Banten',
-  pekerjaan: '',
-  statusKepemilikan: 'Rumah Sendiri',
-  statusKepemilikanLainnya: '',
-  persyaratan: {
-    ktp: false,
-    kk: false,
-    pbb: false,
-    suratDomisili: false,
-    suratKuasaSewa: false,
-    lainnya: false,
-    keteranganLainnya: '',
-  },
-  persyaratanFiles: {},
-  luasTanah: '',
-  luasBangunan: '',
-  totalLuasBangunan: 0,
-  fungsiBangunan: 'Rumah Tangga',
-  kondisiBangunan: {
-    luasBangunan: '',
-    totalLuasBangunan: '',
-    jumlahLantai: '1',
-    jumlahPenghuni: '4',
-  },
-  lingkungan: {
-    saluranPembuangan: 'Ada',
-    sanitasi: 'Ada',
-    halaman: 'Ada',
-    lebarJalan: '> 4 m',
-    lingkunganTertata: 'Ya',
-    realEstate: 'Bukan',
-  },
-  dataPasang: {
-    namaSales: 'Bpk. Hendra Gunawan (Surveyor)',
-    tanggalSurvey: new Date().toISOString().split('T')[0],
-    noWorkOrder: 'WO-2026-AET-' + Math.floor(1000 + Math.random() * 9000),
-    gpsLat: '-6.236600',
-    gpsLong: '106.562100',
-    namaKontraktor: 'PT Mitra Tirta Tangerang',
-    dataAlamat: 'Benar',
-    dataAlamatKoreksi: '',
-    dataJaringan: 'Ada Jaringan',
-    dataGalian: ['Tanah'],
-    luasBangunanSurvey: '28,9 - 70 m²',
-    kualitasBangunan: 'Permanen',
-    fotoProperti: 'Ada',
-    diameterPipa: '1/2 Inch',
-    panjangPipa: '6',
-    panjangPipaTipe: 'HDPE PE-100 PN16',
-    materialTambahan: 'Kran Kuningan, Stop Kran Ball Valve, Box Meter',
-    materialStatus: 'Standard',
-    tanggalPasangMeter: new Date().toISOString().split('T')[0],
-    noSegel: 'SGL-' + Math.floor(10000 + Math.random() * 90000),
-    noSeriMeter: 'AET-2026-' + Math.floor(10000 + Math.random() * 90000),
-    namaTeknisi: 'Ahmad Syafiq (Instalatur)',
-    telpPetugas: '081299887766',
-  },
-  fotoPropertiFiles: [],
-  skemaPembayaran: 'Pembayaran Penuh',
-  keteranganSkema: 'Pembayaran Penuh',
-  biayaSambungan: 1371545,
-  golonganTarif: 'R2 = Rumah Tangga 2',
-  persetujuan: false,
-  trackingStep: 1,
-  createdAt: new Date().toISOString(),
-});
+export const getNextFormNumber = (existingList?: RegistrationFormData[]): string => {
+  try {
+    let list = existingList;
+    if (!list || list.length === 0) {
+      const saved = localStorage.getItem('aetra_registrations');
+      if (saved) {
+        list = JSON.parse(saved);
+      }
+    }
+    const baseNumber = 165050;
+    if (!list || list.length === 0) {
+      return String(baseNumber);
+    }
+    const formNumbers = list
+      .map((item) => {
+        const num = parseInt(item.noForm?.replace(/\D/g, '') || '', 10);
+        return isNaN(num) ? 0 : num;
+      })
+      .filter((n) => n >= baseNumber);
+    if (formNumbers.length === 0) {
+      return String(baseNumber);
+    }
+    const maxForm = Math.max(...formNumbers);
+    return String(maxForm + 1);
+  } catch {
+    return '165050';
+  }
+};
 
-export type KategoriFungsi = 'rumah_tangga' | 'sosial_instansi' | 'usaha';
+export const getEmptyFormData = (user?: UserAccount | null, existingList?: RegistrationFormData[]): RegistrationFormData => {
+  const autoNo = getNextFormNumber(existingList);
+  return {
+    id: 'reg-' + Date.now(),
+    noSr: autoNo,
+    noForm: autoNo,
+    idPelanggan: '',
+    tanggal: new Date().toISOString().split('T')[0],
+    namaKtp: (user?.nama || '').toUpperCase(),
+    noKtp: '',
+    alamatKtp: '',
+    rtRwKtp: '',
+    kecamatanKtp: '',
+    desaKtp: '',
+    kodePosKtp: '',
+    kelurahanKtp: '',
+    kotaKtp: '',
+    provinsiKtp: '',
+    telpHp: '',
+    email: user?.email || '',
+    alamatPasang: '',
+    rtRwPasang: '',
+    kecamatanPasang: '',
+    desaPasang: '',
+    kodePosPasang: '',
+    kelurahanPasang: '',
+    kotaPasang: 'KABUPATEN TANGERANG',
+    provinsiPasang: 'BANTEN',
+    pekerjaan: '',
+    statusKepemilikan: 'RUMAH SENDIRI',
+    statusKepemilikanLainnya: '',
+    persyaratan: {
+      ktp: false,
+      kk: false,
+      pbb: false,
+      suratDomisili: false,
+      suratKuasaSewa: false,
+      lainnya: false,
+      keteranganLainnya: '',
+    },
+    persyaratanFiles: {},
+    luasTanah: '',
+    luasBangunan: '',
+    totalLuasBangunan: 0,
+    fungsiBangunan: 'Rumah Tangga',
+    kondisiBangunan: {
+      luasBangunan: '',
+      totalLuasBangunan: '',
+      jumlahLantai: '1',
+      jumlahPenghuni: '4',
+    },
+    lingkungan: {
+      saluranPembuangan: 'Ada',
+      sanitasi: 'Ada',
+      halaman: 'Ada',
+      lebarJalan: '> 4 m',
+      lingkunganTertata: 'Ya',
+      realEstate: 'Bukan',
+    },
+    dataPasang: {
+      namaSales: 'Bpk. Hendra Gunawan (Surveyor)',
+      tanggalSurvey: new Date().toISOString().split('T')[0],
+      noWorkOrder: 'WO-2026-AET-' + Math.floor(1000 + Math.random() * 9000),
+      gpsLat: '-6.236600',
+      gpsLong: '106.562100',
+      namaKontraktor: 'PT Mitra Tirta Tangerang',
+      dataAlamat: 'Benar',
+      dataAlamatKoreksi: '',
+      dataJaringan: 'Ada Jaringan',
+      dataGalian: ['Tanah'],
+      luasBangunanSurvey: '28,9 - 70 m²',
+      kualitasBangunan: 'Permanen',
+      fotoProperti: 'Ada',
+      diameterPipa: '1/2 Inch',
+      panjangPipa: '6',
+      panjangPipaTipe: 'HDPE PE-100 PN16',
+      materialTambahan: 'Kran Kuningan, Stop Kran Ball Valve, Box Meter',
+      materialStatus: 'Standard',
+      tanggalPasangMeter: new Date().toISOString().split('T')[0],
+      noSegel: 'SGL-' + Math.floor(10000 + Math.random() * 90000),
+      noSeriMeter: 'AET-2026-' + Math.floor(10000 + Math.random() * 90000),
+      namaTeknisi: 'Ahmad Syafiq (Instalatur)',
+      telpPetugas: '081299887766',
+    },
+    fotoPropertiFiles: [],
+    skemaPembayaran: 'Pembayaran Penuh',
+    keteranganSkema: 'Pembayaran Penuh',
+    biayaSambungan: 1371545,
+    golonganTarif: 'R2 = Rumah Tangga 2',
+    persetujuan: false,
+    trackingStep: 1,
+    createdAt: new Date().toISOString(),
+  };
+};
 
 interface RegistrationFormProps {
-  onRegisterSuccess: (record: RegistrationFormData) => void;
-  onNavigateTracking: (noForm: string) => void;
   currentUser?: UserAccount | null;
   existingRegistrations?: RegistrationFormData[];
+  onRegisterSuccess: (record: RegistrationFormData) => void;
+  onNavigateToTracking?: (noForm: string) => void;
+  onNavigateToBilling?: (idPelanggan: string) => void;
   onViewReceipt?: (record: RegistrationFormData) => void;
-  onUpdateRegistration?: (record: RegistrationFormData) => void;
+  onLogout?: () => void;
 }
 
-export const RegistrationForm: React.FC<RegistrationFormProps> = ({ 
-  onRegisterSuccess, 
-  onNavigateTracking,
+export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   currentUser,
-  existingRegistrations,
-  onViewReceipt,
-  onUpdateRegistration,
+  existingRegistrations = [],
+  onRegisterSuccess,
+  onNavigateToTracking,
+  onNavigateToBilling,
+  onLogout,
 }) => {
+  const [forceShowForm, setForceShowForm] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [highestStepReached, setHighestStepReached] = useState<number>(1);
-
   const [formData, setFormData] = useState<RegistrationFormData>(() => {
-    const draftKey = getDraftKey(currentUser);
-    try {
-      const draftStr = localStorage.getItem(draftKey);
-      if (draftStr) {
-        const parsed = JSON.parse(draftStr);
-        if (parsed && typeof parsed === 'object') {
-          return {
-            ...getEmptyFormData(currentUser),
-            ...parsed,
-            namaKtp: parsed.namaKtp || currentUser?.nama || '',
-            email: parsed.email || currentUser?.email || '',
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('Error reading draft:', e);
-    }
-    return getEmptyFormData(currentUser);
+    return getEmptyFormData(currentUser, existingRegistrations);
   });
-
-  const [notification, setNotification] = useState<string | null>(null);
   const [submittedRecord, setSubmittedRecord] = useState<RegistrationFormData | null>(null);
-  const [forceShowForm, setForceShowForm] = useState(false);
-  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [errorFields, setErrorFields] = useState<Record<string, boolean>>({});
 
-  // Payment confirmation form state
-  const [paymentProofData, setPaymentProofData] = useState<{
-    bank: string;
-    namaPengirim: string;
-    noRekening: string;
-    tanggalBayar: string;
-    catatan: string;
-    fileUrl: string;
-  }>({
-    bank: 'BCA (Virtual Account)',
-    namaPengirim: '',
-    noRekening: '',
-    tanggalBayar: new Date().toISOString().split('T')[0],
-    catatan: '',
-    fileUrl: '',
-  });
-  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
-
-  const [cameraModalConfig, setCameraModalConfig] = useState<{
-    isOpen: boolean;
-    targetType: 'document' | 'property' | 'payment';
-    docKey?: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya';
+  // Modals
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState<boolean>(false);
+  const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
+  const [cameraConfig, setCameraConfig] = useState<{
+    targetDocKey?: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya' | 'payment';
     title: string;
-    guideType?: 'document' | 'property' | 'payment';
+  }>({ title: 'Ambil Foto Dokumen' });
+
+  // Lightbox Image Viewer
+  const [activeViewer, setActiveViewer] = useState<{
+    isOpen: boolean;
+    imageUrl: string;
+    title: string;
+    description?: string;
   }>({
     isOpen: false,
-    targetType: 'document',
-    title: 'Kamera Pengambilan Foto',
-    guideType: 'document',
+    imageUrl: '',
+    title: '',
   });
+
+  // UI States
+  const [notification, setNotification] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedChannel, setSelectedChannel] = useState<string>('mandiri');
+  const [expandedGuide, setExpandedGuide] = useState<string | null>('mandiri');
+  const [copiedVa, setCopiedVa] = useState(false);
+
+  // Active customer registration check
+  const [registrationsList, setRegistrationsList] = useState<RegistrationFormData[]>(existingRegistrations);
+
+  useEffect(() => {
+    setRegistrationsList(existingRegistrations);
+  }, [existingRegistrations]);
+
+  // Listen for background sync updates
+  useEffect(() => {
+    const handleSync = (e: any) => {
+      try {
+        const saved = localStorage.getItem('aetra_registrations');
+        if (saved) {
+          const list: RegistrationFormData[] = JSON.parse(saved);
+          setRegistrationsList(list);
+        }
+      } catch (err) {
+        console.warn('Sync read warning', err);
+      }
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('aetra_sync_event', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('aetra_sync_event', handleSync);
+    };
+  }, []);
 
   const activeExistingRegistration = useMemo(() => {
     if (submittedRecord) return submittedRecord;
     if (!currentUser || currentUser.role === 'admin') return null;
 
-    let pool: RegistrationFormData[] = existingRegistrations || [];
-    if (pool.length === 0) {
-      try {
-        const saved = localStorage.getItem('aetra_registrations');
-        if (saved) pool = JSON.parse(saved);
-      } catch {
-        pool = [];
-      }
-    }
-
     return (
-      pool.find((r) => {
-        if (currentUser.idPelanggan && r.idPelanggan === currentUser.idPelanggan) return true;
-        if (currentUser.id && (r as any).userId === currentUser.id) return true;
-        if (currentUser.email && r.email && r.email.toLowerCase() === currentUser.email.toLowerCase()) return true;
-        return false;
-      }) || null
+      registrationsList.find(
+        (r) =>
+          (currentUser.idPelanggan && r.idPelanggan === currentUser.idPelanggan) ||
+          (currentUser.id && (r as any).userId === currentUser.id) ||
+          (currentUser.email && r.email && r.email.toLowerCase() === currentUser.email.toLowerCase())
+      ) || null
     );
-  }, [currentUser, submittedRecord, existingRegistrations]);
+  }, [submittedRecord, currentUser, registrationsList]);
+
+  // Synchronize when active registration exists
+  useEffect(() => {
+    if (activeExistingRegistration && !forceShowForm) {
+      setSubmittedRecord(activeExistingRegistration);
+    }
+  }, [activeExistingRegistration, forceShowForm]);
+
+  // Cascading Address options
+  const [ktpCityOptions, setKtpCityOptions] = useState<string[]>([]);
+  const [ktpDistrictOptions, setKtpDistrictOptions] = useState<string[]>([]);
+  const [ktpSubdistrictOptions, setKtpSubdistrictOptions] = useState<string[]>([]);
+
+  const [installDistrictOptions, setInstallDistrictOptions] = useState<string[]>([]);
+  const [installSubdistrictOptions, setInstallSubdistrictOptions] = useState<string[]>([]);
+
+  // Initialize province cascades
+  useEffect(() => {
+    if (formData.provinsiKtp) {
+      const provObj = INDONESIA_PROVINCES_DATA.find((p) => p.name.toUpperCase() === formData.provinsiKtp?.toUpperCase());
+      if (provObj) {
+        setKtpCityOptions(provObj.cities.map((c) => c.name));
+      } else {
+        setKtpCityOptions([]);
+      }
+    } else {
+      setKtpCityOptions([]);
+    }
+  }, [formData.provinsiKtp]);
 
   useEffect(() => {
-    if (currentUser) {
-      setFormData((prev) => ({
-        ...prev,
-        namaKtp: prev.namaKtp || currentUser.nama,
-        email: prev.email || currentUser.email,
-      }));
+    if (formData.provinsiKtp && formData.kotaKtp) {
+      const provObj = INDONESIA_PROVINCES_DATA.find((p) => p.name.toUpperCase() === formData.provinsiKtp?.toUpperCase());
+      const cityObj = provObj?.cities.find((c) => c.name.toUpperCase() === formData.kotaKtp?.toUpperCase());
+      if (cityObj) {
+        setKtpDistrictOptions(cityObj.districts.map((d) => d.name));
+      } else {
+        setKtpDistrictOptions([]);
+      }
+    } else {
+      setKtpDistrictOptions([]);
     }
-  }, [currentUser]);
+  }, [formData.provinsiKtp, formData.kotaKtp]);
 
-  const [kategoriFungsi, setKategoriFungsi] = useState<KategoriFungsi>(() => {
-    if (formData.fungsiBangunan) {
-      if (SOSIAL_INSTANSI_OPTIONS.includes(formData.fungsiBangunan)) return 'sosial_instansi';
-      if (USAHA_OPTIONS.includes(formData.fungsiBangunan) || formData.fungsiBangunan === 'Usaha') return 'usaha';
+  useEffect(() => {
+    if (formData.provinsiKtp && formData.kotaKtp && formData.kecamatanKtp) {
+      const provObj = INDONESIA_PROVINCES_DATA.find((p) => p.name.toUpperCase() === formData.provinsiKtp?.toUpperCase());
+      const cityObj = provObj?.cities.find((c) => c.name.toUpperCase() === formData.kotaKtp?.toUpperCase());
+      const distObj = cityObj?.districts.find((d) => d.name.toUpperCase() === formData.kecamatanKtp?.toUpperCase());
+      if (distObj) {
+        setKtpSubdistrictOptions(distObj.villages);
+      } else {
+        setKtpSubdistrictOptions([]);
+      }
+    } else {
+      setKtpSubdistrictOptions([]);
     }
+  }, [formData.provinsiKtp, formData.kotaKtp, formData.kecamatanKtp]);
+
+  // Installation region cascade (Tangerang default)
+  useEffect(() => {
+    setInstallDistrictOptions(AETRA_TANGERANG_INSTALLATION_REGIONS.map((r) => r.name));
+  }, []);
+
+  useEffect(() => {
+    if (formData.kecamatanPasang) {
+      const kecObj = AETRA_TANGERANG_INSTALLATION_REGIONS.find(
+        (r) => r.name.toUpperCase() === formData.kecamatanPasang?.toUpperCase()
+      );
+      if (kecObj) {
+        setInstallSubdistrictOptions(kecObj.villages);
+      } else {
+        setInstallSubdistrictOptions([]);
+      }
+    } else {
+      setInstallSubdistrictOptions([]);
+    }
+  }, [formData.kecamatanPasang]);
+
+  // Building Function Category State
+  const [kategoriFungsi, setKategoriFungsi] = useState<'rumah_tangga' | 'sosial_instansi' | 'usaha_bisnis'>(() => {
+    if (formData.fungsiBangunan?.includes('Sosial') || formData.fungsiBangunan?.includes('Instansi')) return 'sosial_instansi';
+    if (formData.fungsiBangunan?.includes('Usaha') || formData.fungsiBangunan?.includes('Komersial')) return 'usaha_bisnis';
     return 'rumah_tangga';
   });
 
-  // Calculate dynamic multi-floor tariff result
-  const calculatedTariff = useMemo(() => {
-    if (kategoriFungsi === 'sosial_instansi') {
-      return {
-        code: '1 - Sosial' as any,
-        name: 'Golongan 1 - Sosial',
-        appliedClause: 'Peruntukan tempat ibadah, asrama sosial, atau fasilitas umum nirlaba.',
-        allPoints: ['Fasilitas sosial murni', 'Tarif subsidi khusus pemerintah'],
-        color: 'emerald',
-      };
-    }
-    if (kategoriFungsi === 'usaha') {
-      return {
-        code: '3 - Usaha' as any,
-        name: 'Golongan 3 - Usaha',
-        appliedClause: 'Peruntukan kegiatan komersial, perdagangan, toko, ruko, atau industri kecil/menengah.',
-        allPoints: ['Kegiatan usaha komersil aktif', 'Tarif kategori usaha resmi Aetra'],
-        color: 'amber',
-      };
-    }
-
-    const baseLuas = parseFloat(String(formData.luasBangunan || '0'));
-    const floorCount = Math.max(1, parseInt(String(formData.kondisiBangunan?.jumlahLantai || '1'), 10) || 1);
-    const totalLuas = baseLuas * floorCount;
-
-    const isRealEstate = formData.lingkungan?.realEstate === 'Ya';
-    const hasUsaha = Boolean(formData.hasUsahaKomersil);
-
-    return calculateDomesticTariff(totalLuas, isRealEstate, hasUsaha);
-  }, [formData.luasBangunan, formData.kondisiBangunan?.jumlahLantai, formData.lingkungan?.realEstate, formData.hasUsahaKomersil, kategoriFungsi]);
-
-  useEffect(() => {
-    if (calculatedTariff) {
-      setFormData((prev) => ({
-        ...prev,
-        golonganTarif: calculatedTariff.name,
-        kategoriTarifKlausul: calculatedTariff.appliedClause,
-      }));
-    }
-  }, [calculatedTariff]);
-
-  // Handle Payment Confirmation & Proof Upload
-  const handleConfirmPayment = () => {
-    if (!activeExistingRegistration) return;
-    if (!paymentProofData.fileUrl && !paymentProofData.bank) {
-      alert('Mohon pilih metode pembayaran dan upload foto bukti struk pembayaran.');
-      return;
-    }
-
-    setIsSubmittingPayment(true);
-    const proof: PaymentProofData = {
-      dataUrl: paymentProofData.fileUrl || '',
-      bank: paymentProofData.bank,
-      namaPengirim: paymentProofData.namaPengirim || activeExistingRegistration.namaKtp,
-      noRekening: paymentProofData.noRekening,
-      tanggalBayar: paymentProofData.tanggalBayar,
-      catatan: paymentProofData.catatan,
-      uploadedAt: new Date().toISOString(),
-    };
-
-    const updatedRecord: RegistrationFormData = {
-      ...activeExistingRegistration,
-      status_pendaftaran: 'PAYMENT_CONFIRMED',
-      statusPendaftaran: 'PAYMENT_CONFIRMED',
-      statusPembayaran: 'Menunggu Verifikasi Kasir',
-      paymentProof: proof,
-    };
-
-    try {
-      const saved = localStorage.getItem('aetra_registrations');
-      const list: RegistrationFormData[] = saved ? JSON.parse(saved) : [];
-      const updatedList = list.map((r) => r.noForm === updatedRecord.noForm ? updatedRecord : r);
-      localStorage.setItem('aetra_registrations', JSON.stringify(updatedList));
-    } catch (e) {
-      console.warn('Storage sync error:', e);
-    }
-
-    saveRegistrationToDb(updatedRecord).catch((e) => console.warn(e));
-    if (onUpdateRegistration) {
-      onUpdateRegistration(updatedRecord);
-    }
-    setSubmittedRecord(updatedRecord);
-    setIsSubmittingPayment(false);
-    setNotification('Bukti pembayaran berhasil dikonfirmasi! Sedang diverifikasi oleh Kasir & Petugas Keuangan Aetra.');
-    setTimeout(() => setNotification(null), 5000);
+  // Uppercase Text Updater Helper
+  const handleUppercaseChange = (field: keyof RegistrationFormData, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value.toUpperCase(),
+    }));
   };
 
-  // Section Definitions
-  const SECTIONS = [
-    { number: 1, title: 'Data Diri', subtitle: 'Identitas & Kontak' },
-    { number: 2, title: 'Alamat KTP', subtitle: 'Domisili Kependudukan' },
-    { number: 3, title: 'Alamat Pasang', subtitle: 'Titik Sambungan Baru' },
-    { number: 4, title: 'Upload Dokumen', subtitle: 'KTP, KK, PBB & Foto Rumah' },
-    { number: 5, title: 'Kondisi & Tarif', subtitle: 'Fisik & Golongan Tarif' },
-    { number: 6, title: 'Petugas Lapangan', subtitle: 'Verifikasi & Persetujuan' },
-  ];
-
-  const handleDocUpload = (
-    docKey: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya',
-    e: React.ChangeEvent<HTMLInputElement>,
-    source: 'file' | 'camera' = 'file'
-  ) => {
+  // Upload handler for admin docs
+  const handleDocFileUpload = (key: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran file maksimal 5MB.');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
+      const dataUrl = reader.result as string;
       const uploadedDoc: UploadedDoc = {
-        id: `doc-${Date.now()}`,
+        id: 'doc-' + Date.now(),
         name: file.name,
-        dataUrl: reader.result as string,
-        source: source,
+        dataUrl,
+        source: 'file',
         type: file.type,
-        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        size: (file.size / 1024).toFixed(1) + ' KB',
         uploadedAt: new Date().toISOString(),
       };
 
@@ -405,2032 +441,1755 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         ...prev,
         persyaratan: {
           ...prev.persyaratan,
-          [docKey]: true,
+          [key]: true,
         },
         persyaratanFiles: {
           ...prev.persyaratanFiles,
-          [docKey]: uploadedDoc,
+          [key]: uploadedDoc,
         },
       }));
-
-      setErrorFields((prev) => ({ ...prev, [docKey + 'Doc']: false }));
     };
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveDoc = (docKey: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya') => {
+  const handleDocCameraCapture = (key: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya') => {
+    const titles = {
+      ktp: 'Foto e-KTP Pemohon',
+      kk: 'Foto Kartu Keluarga (KK)',
+      pbb: 'Foto Pajak Bumi dan Bangunan (PBB)',
+      suratDomisili: 'Foto Surat Keterangan Domisili',
+      suratKuasaSewa: 'Foto Surat Perjanjian Sewa / Kuasa',
+      lainnya: 'Foto Dokumen Pendukung Lainnya',
+    };
+    setCameraConfig({
+      targetDocKey: key,
+      title: titles[key] || 'Kamera Foto Dokumen',
+    });
+    setIsCameraOpen(true);
+  };
+
+  const handleRemoveDoc = (key: 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya') => {
     setFormData((prev) => {
-      const updatedFiles = { ...prev.persyaratanFiles };
-      delete updatedFiles[docKey];
+      const nextFiles = { ...prev.persyaratanFiles };
+      delete nextFiles[key];
       return {
         ...prev,
         persyaratan: {
           ...prev.persyaratan,
-          [docKey]: false,
+          [key]: false,
         },
-        persyaratanFiles: updatedFiles,
+        persyaratanFiles: nextFiles,
       };
     });
   };
 
-  const handleDirectCameraCapture = (dataUrl: string) => {
-    if (cameraModalConfig.targetType === 'payment') {
+  // Payment proof upload state (for customer payment stage)
+  const [paymentProofData, setPaymentProofData] = useState<PaymentProofData>({
+    dataUrl: '',
+    bank: 'Bank Mandiri Virtual Account',
+    tanggalBayar: new Date().toISOString().split('T')[0],
+    uploadedAt: new Date().toISOString(),
+  });
+
+  const handlePaymentProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran file maksimal 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
       setPaymentProofData((prev) => ({
         ...prev,
-        fileUrl: dataUrl,
-      }));
-      setCameraModalConfig((prev) => ({ ...prev, isOpen: false }));
-      return;
-    }
-
-    if (cameraModalConfig.targetType === 'property') {
-      const newPhoto: PropertyPhoto = {
-        id: 'photo-' + Date.now(),
-        name: `Foto Properti Kamera ${new Date().toLocaleTimeString('id-ID')}`,
         dataUrl,
-        source: 'camera',
-        caption: 'Foto Tampak Rumah / Lokasi Titik Meter',
-        timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setFormData((prev) => ({
-        ...prev,
-        fotoPropertiFiles: [...(prev.fotoPropertiFiles || []), newPhoto],
+        uploadedAt: new Date().toISOString(),
       }));
-      setCameraModalConfig((prev) => ({ ...prev, isOpen: false }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmitCustomerPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentProofData.dataUrl) {
+      alert('Silakan upload foto struk/bukti transfer pembayaran terlebih dahulu.');
       return;
     }
 
-    if (cameraModalConfig.docKey) {
-      const docKey = cameraModalConfig.docKey;
-      const uploadedDoc: UploadedDoc = {
-        id: `doc-${Date.now()}`,
-        name: `Kamera-${docKey.toUpperCase()}-${Date.now()}.jpg`,
-        dataUrl: dataUrl,
-        source: 'camera',
-        type: 'image/jpeg',
-        size: '1.2 MB',
-        uploadedAt: new Date().toISOString(),
-      };
+    if (!activeExistingRegistration) return;
 
-      setFormData((prev) => ({
-        ...prev,
-        persyaratan: {
-          ...prev.persyaratan,
-          [docKey]: true,
-        },
-        persyaratanFiles: {
-          ...prev.persyaratanFiles,
-          [docKey]: uploadedDoc,
-        },
-      }));
-      setErrorFields((prev) => ({ ...prev, [docKey + 'Doc']: false }));
-    }
-    setCameraModalConfig((prev) => ({ ...prev, isOpen: false }));
+    const updatedRecord: RegistrationFormData = {
+      ...activeExistingRegistration,
+      statusPendaftaran: 'PAYMENT_CONFIRMED',
+      status_pendaftaran: 'PAYMENT_CONFIRMED',
+      statusPembayaran: 'Menunggu Verifikasi Kasir',
+      paymentProof: paymentProofData,
+      trackingStep: 2,
+    };
+
+    onRegisterSuccess(updatedRecord);
+    setSubmittedRecord(updatedRecord);
+    setNotification('Bukti pembayaran berhasil dikirim! Kasir Aetra sedang memverifikasi pembayaran Anda.');
+    setTimeout(() => setNotification(null), 5000);
   };
 
-  const validateCurrentSection = (stepNum: number): boolean => {
-    const errors: string[] = [];
-    const fields: Record<string, boolean> = {};
+  // Validate current step
+  const validateStep = (stepNumber: number): boolean => {
+    const errs: Record<string, string> = {};
 
-    if (stepNum === 1) {
-      if (!formData.noSr?.trim()) {
-        errors.push('No. SR (Sambungan Rumah) wajib diisi');
-        fields.noSr = true;
+    if (stepNumber === 1) {
+      if (!formData.namaKtp.trim()) errs.namaKtp = 'Nama pemohon wajib diisi';
+      if (!formData.noKtp.trim() || formData.noKtp.length < 16) errs.noKtp = 'No. KTP harus 16 digit angka';
+      if (!formData.telpHp.trim()) errs.telpHp = 'Nomor HP/WhatsApp aktif wajib diisi';
+      if (!formData.email.trim()) errs.email = 'Alamat email wajib diisi';
+      if (!formData.alamatKtp.trim()) errs.alamatKtp = 'Alamat KTP wajib diisi';
+    }
+
+    if (stepNumber === 2) {
+      if (!formData.alamatPasang.trim()) errs.alamatPasang = 'Alamat jalan pemasangan wajib diisi';
+      if (!formData.kecamatanPasang) errs.kecamatanPasang = 'Kecamatan wajib dipilih';
+      if (!formData.desaPasang && !formData.kelurahanPasang) errs.desaPasang = 'Kelurahan / Desa wajib dipilih';
+    }
+
+    if (stepNumber === 3) {
+      if (!formData.persyaratanFiles?.ktp && !formData.persyaratan?.ktp) {
+        errs.ktp = 'Wajib mengunggah foto e-KTP Asli';
       }
-      if (!formData.namaKtp?.trim()) {
-        errors.push('Nama Lengkap (Sesuai KTP) wajib diisi');
-        fields.namaKtp = true;
+      if (!formData.persyaratanFiles?.pbb && !formData.persyaratan?.pbb) {
+        errs.pbb = 'Wajib mengunggah foto Pajak Bumi dan Bangunan (PBB)';
       }
-      if (!formData.noKtp?.trim()) {
-        errors.push('Nomor KTP (NIK 16 Digit) wajib diisi');
-        fields.noKtp = true;
-      }
-      if (!formData.pekerjaan?.trim()) {
-        errors.push('Pekerjaan Pemohon wajib diisi');
-        fields.pekerjaan = true;
-      }
-      if (!formData.telpHp?.trim()) {
-        errors.push('Nomor HP / WhatsApp aktif wajib diisi');
-        fields.telpHp = true;
-      }
-    } else if (stepNum === 2) {
-      if (!formData.alamatKtp?.trim()) {
-        errors.push('Alamat Lengkap KTP wajib diisi');
-        fields.alamatKtp = true;
-      }
-      if (!formData.rtRwKtp?.trim()) {
-        errors.push('RT / RW KTP wajib diisi');
-        fields.rtRwKtp = true;
-      }
-      if (!formData.provinsiKtp?.trim()) {
-        errors.push('Provinsi KTP wajib dipilih');
-        fields.provinsiKtp = true;
-      }
-      if (!formData.kotaKtp?.trim()) {
-        errors.push('Kota / Kabupaten KTP wajib dipilih');
-        fields.kotaKtp = true;
-      }
-      if (!formData.kecamatanKtp?.trim()) {
-        errors.push('Kecamatan KTP wajib dipilih');
-        fields.kecamatanKtp = true;
-      }
-      if (!formData.kelurahanKtp?.trim() && !formData.desaKtp?.trim()) {
-        errors.push('Kelurahan / Desa KTP wajib dipilih');
-        fields.kelurahanKtp = true;
-      }
-      if (!formData.kodePosKtp?.trim()) {
-        errors.push('Kode Pos KTP wajib diisi');
-        fields.kodePosKtp = true;
-      }
-    } else if (stepNum === 3) {
-      if (!formData.alamatPasang?.trim()) {
-        errors.push('Alamat Lengkap Pemasangan wajib diisi');
-        fields.alamatPasang = true;
-      }
-      if (!formData.rtRwPasang?.trim()) {
-        errors.push('RT / RW Pemasangan wajib diisi');
-        fields.rtRwPasang = true;
-      }
-      if (!formData.kecamatanPasang?.trim()) {
-        errors.push('Kecamatan Pemasangan di Kabupaten Tangerang wajib dipilih');
-        fields.kecamatanPasang = true;
-      }
-      if (!formData.kelurahanPasang?.trim() && !formData.desaPasang?.trim()) {
-        errors.push('Kelurahan / Desa Pemasangan wajib dipilih');
-        fields.kelurahanPasang = true;
-      }
-      if (!formData.kodePosPasang?.trim()) {
-        errors.push('Kode Pos Pemasangan wajib diisi');
-        fields.kodePosPasang = true;
-      }
-      if (!formData.statusKepemilikan?.trim()) {
-        errors.push('Status Kepemilikan Bangunan wajib dipilih');
-        fields.statusKepemilikan = true;
-      }
-    } else if (stepNum === 4) {
-      if (!formData.persyaratan?.ktp && !formData.persyaratanFiles?.ktp) {
-        errors.push('Foto KTP Pemohon wajib diunggah');
-        fields.ktpDoc = true;
-      }
-    } else if (stepNum === 5) {
-      if (!formData.fungsiBangunan?.trim()) {
-        errors.push('Kategori peruntukan fungsi bangunan wajib dipilih');
-        fields.fungsiBangunan = true;
-      }
-      if (kategoriFungsi === 'rumah_tangga') {
-        if (!formData.luasBangunan || Number(formData.luasBangunan) <= 0) {
-          errors.push('Luas Bangunan (m²) wajib diisi untuk Rumah Tangga');
-          fields.luasBangunan = true;
-        }
-        if (!formData.luasTanah || Number(formData.luasTanah) <= 0) {
-          errors.push('Luas Tanah (m²) wajib diisi untuk Rumah Tangga');
-          fields.luasTanah = true;
-        }
-        if (!formData.kondisiBangunan?.jumlahLantai) {
-          errors.push('Jumlah Lantai wajib diisi');
-          fields.jumlahLantai = true;
-        }
-        if (!formData.kondisiBangunan?.jumlahPenghuni) {
-          errors.push('Jumlah Penghuni wajib diisi');
-          fields.jumlahPenghuni = true;
-        }
-      }
-    } else if (stepNum === 6) {
-      if (!formData.dataPasang?.namaSales?.trim()) {
-        errors.push('Petugas Surveyor Lapangan wajib diisi');
-        fields['dataPasang.namaSales'] = true;
-      }
-      if (!formData.dataPasang?.namaKontraktor?.trim()) {
-        errors.push('Mitra Kontraktor Pelaksana wajib diisi');
-        fields['dataPasang.namaKontraktor'] = true;
-      }
+    }
+
+    if (stepNumber === 4) {
+      if (!formData.luasBangunan) errs.luasBangunan = 'Luas bangunan wajib diisi';
+    }
+
+    if (stepNumber === 5) {
       if (!formData.persetujuan) {
-        errors.push('Wajib menyetujui Pernyataan & Ketentuan Berlangganan PT Aetra Air Tangerang');
-        fields.persetujuan = true;
+        errs.persetujuan = 'Anda wajib menyetujui pernyataan kebenaran data & S&K.';
       }
     }
 
-    setValidationErrors(errors);
-    setErrorFields(fields);
-    return errors.length === 0;
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
-
-  const isAllRequiredFieldsFilled = useMemo(() => {
-    const s1 = Boolean(formData.noSr?.trim() && formData.namaKtp?.trim() && formData.noKtp?.trim() && formData.pekerjaan?.trim() && formData.telpHp?.trim());
-    const s2 = Boolean(formData.alamatKtp?.trim() && formData.rtRwKtp?.trim() && formData.provinsiKtp?.trim() && formData.kotaKtp?.trim() && formData.kecamatanKtp?.trim() && (formData.kelurahanKtp?.trim() || formData.desaKtp?.trim()) && formData.kodePosKtp?.trim());
-    const s3 = Boolean(formData.alamatPasang?.trim() && formData.rtRwPasang?.trim() && formData.kecamatanPasang?.trim() && (formData.kelurahanPasang?.trim() || formData.desaPasang?.trim()) && formData.kodePosPasang?.trim() && formData.statusKepemilikan?.trim());
-    const s4 = Boolean(formData.persyaratan?.ktp || formData.persyaratanFiles?.ktp);
-    let s5 = Boolean(formData.fungsiBangunan?.trim());
-    if (kategoriFungsi === 'rumah_tangga') {
-      s5 = s5 && Boolean(formData.luasBangunan && Number(formData.luasBangunan) > 0 && formData.luasTanah && Number(formData.luasTanah) > 0 && formData.kondisiBangunan?.jumlahLantai && formData.kondisiBangunan?.jumlahPenghuni);
-    }
-    const s6 = Boolean(formData.dataPasang?.namaSales?.trim() && formData.dataPasang?.namaKontraktor?.trim() && formData.persetujuan);
-
-    return s1 && s2 && s3 && s4 && s5 && s6;
-  }, [formData, kategoriFungsi]);
 
   const handleNextStep = () => {
-    if (validateCurrentSection(currentStep)) {
-      setValidationErrors([]);
-      setErrorFields({});
-      const next = currentStep + 1;
-      setCurrentStep(next);
-      if (next > highestStepReached) {
-        setHighestStepReached(next);
-      }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!validateStep(currentStep)) return;
+    const next = currentStep + 1;
+    setCurrentStep(next);
+    if (next > highestStepReached) {
+      setHighestStepReached(next);
     }
-  };
-
-  const handlePrevStep = () => {
-    setValidationErrors([]);
-    setErrorFields({});
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleJumpToStep = (stepNumber: number) => {
-    if (stepNumber <= highestStepReached || stepNumber === currentStep + 1) {
-      if (stepNumber > currentStep && !validateCurrentSection(currentStep)) {
-        return;
-      }
-      setValidationErrors([]);
-      setErrorFields({});
-      setCurrentStep(stepNumber);
-      if (stepNumber > highestStepReached) {
-        setHighestStepReached(stepNumber);
-      }
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const handleFinalSubmit = (e: React.FormEvent) => {
+  // When clicking "Daftar Sambungan Baru" at final step, open the S&K modal (Requirement 9)
+  const handleTriggerFinalRegistration = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateCurrentSection(6)) return;
-    if (!isAllRequiredFieldsFilled) return;
+    if (!validateStep(5)) return;
+    setIsTermsModalOpen(true);
+  };
 
-    const noFormVal = formData.noForm || Math.floor(100000 + Math.random() * 900000).toString();
-    const noSrVal = formData.noSr || Math.floor(100000 + Math.random() * 900000).toString();
-
-    // ID Pelanggan is NOT generated yet upon initial registration. Only issued upon payment approval & meter installation.
-    const finalizedRecord: RegistrationFormData = {
+  const handleAcceptTermsAndSubmit = () => {
+    setIsTermsModalOpen(false);
+    const newRecord: RegistrationFormData = {
       ...formData,
-      noForm: noFormVal,
-      noSr: noSrVal,
-      idPelanggan: '', // Dilengkapi nanti setelah pembayaran & meter terpasang
-      statusPendaftaran: 'VERIFYING',
-      status_pendaftaran: 'VERIFYING',
-      statusPembayaran: 'Belum Ditagihkan',
+      statusPendaftaran: 'REGISTERED',
+      status_pendaftaran: 'REGISTERED',
+      trackingStep: 1,
+      statusPembayaran: 'Menunggu Verifikasi Berkas',
       isSkAccepted: true,
       is_sk_accepted: true,
-      trackingStep: 1,
-      tanggal: formData.tanggal || new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString(),
     };
 
-    onRegisterSuccess(finalizedRecord);
-    setSubmittedRecord(finalizedRecord);
-
-    const draftKey = getDraftKey(currentUser);
-    try {
-      localStorage.removeItem(draftKey);
-    } catch {
-      // ignore
-    }
-
-    setNotification('Pendaftaran Sambungan Baru Berhasil Disimpan! Status: Menunggu Verifikasi Petugas.');
+    onRegisterSuccess(newRecord);
+    setSubmittedRecord(newRecord);
+    setForceShowForm(false);
+    setNotification('Pendaftaran Berhasil Dikirim! Berkas Anda sedang dalam verifikasi oleh Petugas Administrasi Aetra.');
     setTimeout(() => setNotification(null), 5000);
   };
 
   const handleReset = () => {
-    if (window.confirm('Kosongkan formulir pendaftaran ini? Semua isian yang belum didaftarkan akan dibersihkan.')) {
-      const empty = getEmptyFormData(currentUser);
+    if (confirm('Kosongkan dan reset seluruh isian formulir?')) {
+      const empty = getEmptyFormData(currentUser, existingRegistrations);
       setFormData(empty);
       setCurrentStep(1);
       setHighestStepReached(1);
-      setValidationErrors([]);
-      setErrorFields({});
-      const draftKey = getDraftKey(currentUser);
-      localStorage.removeItem(draftKey);
-      setNotification('Formulir berhasil dikosongkan.');
-      setTimeout(() => setNotification(null), 3000);
     }
   };
 
-  const isCompletedStage = Boolean(
-    activeExistingRegistration && (
-      activeExistingRegistration.status_pendaftaran === 'ACTIVE_CUSTOMER' ||
-      activeExistingRegistration.statusPendaftaran === 'ACTIVE_CUSTOMER' ||
-      (activeExistingRegistration.trackingStep || 1) >= 5
-    )
+  const isApprovedPaymentStage = Boolean(
+    activeExistingRegistration &&
+    (activeExistingRegistration.status_pendaftaran === 'WAITING_PAYMENT' ||
+     activeExistingRegistration.status_pendaftaran === 'PAYMENT_PENDING' ||
+     activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED' ||
+     activeExistingRegistration.currentStep === 2)
   );
 
-  const isApprovedPaymentStage = activeExistingRegistration && !isCompletedStage && (
-    activeExistingRegistration.status_pendaftaran === 'WAITING_PAYMENT' ||
-    activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED' ||
-    Boolean(activeExistingRegistration.nomorPembayaran)
+  const isFullyConnectedStage = Boolean(
+    activeExistingRegistration &&
+    (activeExistingRegistration.trackingStep === 5 ||
+     activeExistingRegistration.currentStep === 5 ||
+     activeExistingRegistration.status_pendaftaran === 'ACTIVE_CUSTOMER' ||
+     activeExistingRegistration.status_pendaftaran === 'COMPLETED' ||
+     activeExistingRegistration.status_pendaftaran === 'PAYMENT_VERIFIED')
   );
 
-  return (
-    <div className="space-y-6">
-      {/* Toast Notification */}
-      {notification && (
-        <div className="fixed top-4 right-4 z-50 bg-[#005DAA] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 border border-blue-400">
-          <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
-          <span className="text-xs font-bold">{notification}</span>
-        </div>
-      )}
+  // 9 Official Aetra Payment Channels (Requirement 4)
+  const OFFICIAL_PAYMENT_CHANNELS = [
+    {
+      id: 'mandiri',
+      name: 'Bank Mandiri',
+      category: 'ATM & Mobile Banking',
+      code: '88290 + No. Pembayaran',
+      badge: 'Otomatis',
+      instructions: [
+        'Buka aplikasi Livin’ by Mandiri atau ATM Mandiri.',
+        'Pilih menu Bayar > Air Minum / PDAM.',
+        'Pilih penyedia jasa: PT Aetra Air Tangerang (Kode 88290).',
+        'Masukkan Nomor Pembayaran Anda.',
+        'Periksa nama dan jumlah tagihan, lalu konfirmasi pembayaran.',
+      ],
+    },
+    {
+      id: 'bca',
+      name: 'Bank BCA',
+      category: 'm-BCA & KlikBCA',
+      code: '88290 + No. Pembayaran',
+      badge: 'Instan',
+      instructions: [
+        'Buka BCA Mobile (m-BCA) atau ATM BCA.',
+        'Pilih menu m-Transfer > BCA Virtual Account.',
+        'Masukkan Kode Perusahaan (88290) diikuti Nomor Pembayaran Anda.',
+        'Pastikan detail nama dan nominal sesuai, lalu masukkan PIN m-BCA.',
+        'Simpan struk / tangkapan layar bukti pembayaran.',
+      ],
+    },
+    {
+      id: 'bri',
+      name: 'Bank BRI',
+      category: 'BRImo & ATM BRI',
+      code: 'BRIVA Aetra',
+      badge: 'Online',
+      instructions: [
+        'Buka aplikasi BRImo > Pilih Tagihan / BRIVA.',
+        'Pilih PT Aetra Air Tangerang.',
+        'Masukkan Nomor Pembayaran Anda.',
+        'Periksa rincian biaya pasang sambungan baru.',
+        'Konfirmasi pembayaran dan masukkan PIN BRImo.',
+      ],
+    },
+    {
+      id: 'bni',
+      name: 'Bank BNI',
+      category: 'BNI Mobile Banking',
+      code: 'BNI Virtual Account',
+      badge: 'Online',
+      instructions: [
+        'Buka BNI Mobile Banking > Pilih Menu Pembayaran.',
+        'Pilih menu Air Minum / PDAM > AETRA TANGERANG.',
+        'Masukkan Nomor Pembayaran Anda.',
+        'Konfirmasi dan selesaikan transaksi dengan password transaksi.',
+      ],
+    },
+    {
+      id: 'cimb',
+      name: 'Bank Danamon & CIMB Niaga',
+      category: 'OCTO Mobile / D-Bank',
+      code: 'Tagihan Air Aetra',
+      badge: 'Online',
+      instructions: [
+        'Buka aplikasi OCTO Mobile (CIMB) atau D-Bank PRO (Danamon).',
+        'Pilih menu Bill Payment / Pembayaran Tagihan Air.',
+        'Cari institusi: PT Aetra Air Tangerang.',
+        'Input Nomor Pembayaran dan bayar sesuai nominal tertera.',
+      ],
+    },
+    {
+      id: 'indomaret',
+      name: 'Indomaret & Ceriamart',
+      category: 'Kasir Minimarket',
+      code: 'Tunjukkan No. Pembayaran',
+      badge: 'Kasir',
+      instructions: [
+        'Kunjungi gerai Indomaret atau Ceriamart terdekat.',
+        'Sampaikan ke kasir untuk melakukan pembayaran "AETRA AIR TANGERANG".',
+        'Tunjukkan Nomor Pembayaran resmi Anda kepada kasir.',
+        'Lakukan pembayaran tunai / debit dan simpan struk kasir sebagai bukti sah.',
+      ],
+    },
+    {
+      id: 'alfamart',
+      name: 'Alfamart, Alfamidi & Dan+Dan',
+      category: 'Kasir Minimarket',
+      code: 'Tunjukkan No. Pembayaran',
+      badge: 'Kasir',
+      instructions: [
+        'Kunjungi kasir Alfamart, Alfamidi, atau Dan+Dan terdekat.',
+        'Informasikan ingin membayar Tagihan Pasang Sambungan Baru Aetra Tangerang.',
+        'Berikan Nomor Pembayaran kepada kasir.',
+        'Bayar sesuai tagihan yang disebutkan kasir dan simpan struk bukti.',
+      ],
+    },
+    {
+      id: 'pos',
+      name: 'Kantor Pos Indonesia & Pospay',
+      category: 'Loket Pos & Aplikasi',
+      code: 'Layanan Giro Pos',
+      badge: 'Nasional',
+      instructions: [
+        'Datang ke loket Kantor Pos seluruh Indonesia atau buka aplikasi Pospay.',
+        'Pilih menu Tagihan Air PDAM / Aetra Air Tangerang.',
+        'Masukkan Nomor Pembayaran Anda.',
+        'Simpan resi pembayaran kantor pos.',
+      ],
+    },
+    {
+      id: 'ewallet',
+      name: 'E-Wallet & QRIS (GoPay, OVO, ShopeePay, DANA)',
+      category: 'Dompet Digital',
+      code: 'Menu Tagihan Air',
+      badge: 'QRIS / Apps',
+      instructions: [
+        'Buka aplikasi GoPay / OVO / ShopeePay / DANA.',
+        'Pilih menu Tagihan > Air PDAM.',
+        'Pilih wilayah: PT Aetra Air Tangerang.',
+        'Masukkan Nomor Pembayaran Anda dan lakukan pembayaran.',
+      ],
+    },
+  ];
 
-      {/* ======================================================== */}
-      {/* POST-REGISTRATION & PAYMENT STATUS CARD                  */}
-      {/* ======================================================== */}
-      {activeExistingRegistration && !forceShowForm ? (
-        isCompletedStage ? (
-          /* ======================================================== */
-          /* PROFIL PELANGGAN RESMI AKTIF (HANYA 5 KOLOM WAJIB)      */
-          /* 1. ID Pelanggan, 2. Nama, 3. No HP, 4. Email, 5. Alamat */
-          /* ======================================================== */
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md space-y-6 animate-in fade-in">
-            {/* Header Profil */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    Pelanggan Aktif Resmi
-                  </span>
-                </div>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  Profil Pelanggan Anda
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Data identitas sambungan resmi PT Aetra Air Tangerang. Air bersih telah aktif mengalir ke persil Anda.
-                </p>
+  // If customer is already registered & active (Air Mengalir) -> Show Minimal Clean Profile (Requirement)
+  if (isFullyConnectedStage && !forceShowForm) {
+    const finalIdPelanggan = activeExistingRegistration?.idPelanggan || currentUser?.idPelanggan || '10884920';
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+          {/* Header Banner */}
+          <div className="p-6 sm:p-8 bg-gradient-to-r from-[#005DAA] via-[#004884] to-[#003868] text-white flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>SAMBUNGAN AKTIF - AIR BERSIH MENGALIR</span>
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onNavigateTracking(activeExistingRegistration.noForm)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#005DAA] hover:bg-blue-100 text-xs font-bold transition cursor-pointer"
-                >
-                  <Compass className="w-4 h-4" />
-                  <span>Riwayat Tracking</span>
-                </button>
-              </div>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                Profil Pelanggan Resmi Aetra
+              </h2>
+              <p className="text-blue-100 text-sm max-w-xl">
+                Layanan air bersih PT Aetra Air Tangerang telah aktif di persil Anda. Informasi profil resmi Anda tertera di bawah ini.
+              </p>
             </div>
 
-            {/* 5 HANYA KOLOM WAJIB: ID PELANGGAN, NAMA, NO TELEPON, EMAIL, ALAMAT PEMASANGAN */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 1. ID Pelanggan */}
-              <div className="p-4 rounded-2xl bg-emerald-50/80 border-2 border-emerald-300 space-y-1">
-                <span className="text-[10px] font-black text-emerald-800 uppercase tracking-wider block">
-                  1. ID Pelanggan (Nomor Langganan)
-                </span>
-                <div className="font-mono text-xl sm:text-2xl font-black text-emerald-950 flex items-center justify-between">
-                  <span>{activeExistingRegistration.idPelanggan || ('10' + (activeExistingRegistration.noForm || '123456').replace(/\D/g, '').padEnd(6, '0'))}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(activeExistingRegistration.idPelanggan || ('10' + (activeExistingRegistration.noForm || '123456').replace(/\D/g, '').padEnd(6, '0')));
-                      setNotification('ID Pelanggan berhasil disalin!');
-                      setTimeout(() => setNotification(null), 2500);
-                    }}
-                    className="text-xs text-emerald-800 hover:text-emerald-950 font-bold px-2.5 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 transition inline-flex items-center gap-1 cursor-pointer"
-                    title="Salin ID Pelanggan"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Salin</span>
-                  </button>
-                </div>
-                <span className="text-[11px] text-emerald-700 block pt-0.5">
-                  Gunakan ID ini untuk pembayaran rekening air setiap bulan di ATM, Mobile Banking, Indomaret, &amp; Alfamart.
-                </span>
-              </div>
-
-              {/* 2. Nama Pemohon */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  2. Nama Pelanggan
-                </span>
-                <div className="text-base sm:text-lg font-black text-slate-900">
-                  {activeExistingRegistration.namaKtp}
-                </div>
-                <span className="text-[11px] text-slate-500 block">
-                  Nama pemegang rekening terdaftar resmi
-                </span>
-              </div>
-
-              {/* 3. Nomor Telepon */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  3. Nomor Telepon / WhatsApp
-                </span>
-                <div className="text-sm sm:text-base font-bold text-slate-900 font-mono">
-                  {activeExistingRegistration.telpHp || '-'}
-                </div>
-                <span className="text-[11px] text-slate-500 block">
-                  Nomor kontak terhubung untuk notifikasi tagihan &amp; layanan
-                </span>
-              </div>
-
-              {/* 4. Alamat Email */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  4. Alamat Email
-                </span>
-                <div className="text-sm sm:text-base font-bold text-slate-900 truncate">
-                  {activeExistingRegistration.email || currentUser?.email || '-'}
-                </div>
-                <span className="text-[11px] text-slate-500 block">
-                  Pengiriman e-billing dan surat resmi
-                </span>
-              </div>
-
-              {/* 5. Alamat Pemasangan */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1 md:col-span-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  5. Alamat Pemasangan
-                </span>
-                <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed">
-                  {activeExistingRegistration.alamatPasang}, RT/RW {activeExistingRegistration.rtRwPasang}, Kel. {activeExistingRegistration.kelurahanPasang || activeExistingRegistration.desaPasang}, Kec. {activeExistingRegistration.kecamatanPasang}, {activeExistingRegistration.kotaPasang || activeExistingRegistration.provinsiPasang} {activeExistingRegistration.kodePosPasang ? `(${activeExistingRegistration.kodePosPasang})` : ''}
-                </p>
-                <span className="text-[11px] text-slate-500 block">
-                  Titik lokasi terpasang water meter air bersih aktif
-                </span>
+            <div className="shrink-0 flex flex-col items-end gap-2">
+              <span className="text-[10px] font-bold text-blue-200 uppercase tracking-wider">
+                ID Pelanggan Resmi
+              </span>
+              <div className="font-mono text-2xl font-black bg-white/10 px-4 py-2 rounded-2xl border border-white/20 backdrop-blur-xs">
+                {finalIdPelanggan}
               </div>
             </div>
           </div>
-        ) : (
-          <div className="bg-white rounded-2xl border-2 border-blue-400 shadow-xl p-6 sm:p-8 space-y-6 animate-in fade-in">
-            {/* Main Notice Header */}
-            <div className="bg-linear-to-r from-blue-50 via-sky-50 to-amber-50 border border-blue-200 rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-xs">
-              <div className="flex items-start gap-4">
-                <div className="w-13 h-13 rounded-2xl bg-[#005DAA] text-white flex items-center justify-center shadow-md shrink-0 mt-0.5">
-                  {isApprovedPaymentStage ? (
-                    <CreditCard className="w-7 h-7 text-amber-300 animate-bounce" />
-                  ) : (
-                    <Clock className="w-7 h-7 text-amber-300 animate-pulse" />
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-white bg-[#005DAA] px-3 py-0.5 rounded-full shadow-2xs">
-                      Pemberitahuan Pendaftaran
-                    </span>
-                    <span className={`text-[10px] uppercase font-black tracking-wider px-3 py-0.5 rounded-full border ${
-                      activeExistingRegistration.status_pendaftaran === 'WAITING_PAYMENT'
-                        ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
-                        : activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED'
-                        ? 'bg-purple-100 text-purple-900 border-purple-300 font-bold'
-                        : 'bg-sky-100 text-[#005DAA] border-sky-300 font-bold'
-                    }`}>
-                      {activeExistingRegistration.status_pendaftaran === 'WAITING_PAYMENT'
-                        ? 'Tahap 2: Permohonan Disetujui • Menunggu Pembayaran'
-                        : activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED'
-                        ? 'Tahap 2: Bukti Pembayaran Terkirim • Verifikasi Kasir'
-                        : 'Tahap 1: Dalam Tahap Verifikasi Petugas'}
-                    </span>
-                  </div>
 
-                  <h2 className="text-lg sm:text-xl font-black text-slate-900 leading-snug">
-                    {isApprovedPaymentStage
-                      ? 'Permohonan Disetujui Petugas! Silakan Lakukan Pembayaran Sambungan Baru'
-                      : 'Proses Pendaftaran Anda Sedang Dalam Tahap Verifikasi Petugas'}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-600 font-medium">
-                    {isApprovedPaymentStage
-                      ? 'Nomor pembayaran telah diterbitkan. Silakan lakukan pelunasan biaya sambungan dan konfirmasi dengan mengunggah bukti transfer di bawah ini.'
-                      : 'Berkas permohonan sambungan baru Anda sedang dalam proses verifikasi administratif & teknis. Mohon dicek secara berkala.'}
+          {/* Minimal Clean Profile Columns */}
+          <div className="p-6 sm:p-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-[#005DAA]" />
+                  ID Pelanggan (Nomor Pembayaran Tagihan Bulanan)
+                </span>
+                <p className="text-base font-black text-slate-900 font-mono">
+                  {finalIdPelanggan}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-[#005DAA]" />
+                  Nama Lengkap Pelanggan
+                </span>
+                <p className="text-base font-bold text-slate-900 uppercase">
+                  {activeExistingRegistration?.namaKtp || currentUser?.nama}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                  <Smartphone className="w-4 h-4 text-[#005DAA]" />
+                  Nomor Telepon / WhatsApp
+                </span>
+                <p className="text-base font-bold text-slate-900 font-mono">
+                  {activeExistingRegistration?.telpHp || currentUser?.telp || '-'}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-[#005DAA]" />
+                  Alamat Email Terdaftar
+                </span>
+                <p className="text-base font-bold text-slate-900">
+                  {activeExistingRegistration?.email || currentUser?.email || '-'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-[#005DAA]" />
+                Alamat Lengkap Titik Pemasangan Water Meter
+              </span>
+              <p className="text-sm font-bold text-slate-900 uppercase">
+                {activeExistingRegistration?.alamatPasang}, RT/RW {activeExistingRegistration?.rtRwPasang}, Desa/Kel. {activeExistingRegistration?.desaPasang || activeExistingRegistration?.kelurahanPasang}, Kec. {activeExistingRegistration?.kecamatanPasang}, {activeExistingRegistration?.kotaPasang}
+              </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onNavigateToBilling?.(finalIdPelanggan)}
+                  className="px-5 py-2.5 rounded-xl bg-[#005DAA] hover:bg-[#004884] text-white text-xs font-bold shadow-md shadow-blue-600/20 transition cursor-pointer flex items-center gap-2"
+                >
+                  <ReceiptText className="w-4 h-4" />
+                  <span>Cek Tagihan Bulanan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigateToTracking?.(activeExistingRegistration?.noForm || '')}
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer flex items-center gap-2"
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Riwayat Sambungan</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setForceShowForm(true)}
+                className="text-xs text-slate-500 hover:text-[#005DAA] font-semibold underline underline-offset-4 cursor-pointer"
+              >
+                + Formulir Pendaftaran Sambungan Baru Lainnya
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If customer is at payment stage (Waiting Payment / Upload Payment Proof)
+  if (isApprovedPaymentStage && !forceShowForm) {
+    const reg = activeExistingRegistration!;
+    const paymentCode = reg.nomorPembayaran || reg.nomor_pembayaran || '88290' + reg.noForm;
+    const biayaSambungan = reg.biayaSambungan || 1371545;
+
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+          {/* Header */}
+          <div className="p-6 sm:p-8 bg-gradient-to-r from-[#005DAA] to-[#003868] text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-400 text-slate-900 inline-flex items-center gap-1.5">
+                <CreditCard className="w-3.5 h-3.5" />
+                TAHAP 2: PEMBAYARAN BIAYA SAMBUNGAN BARU
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                Instruksi Pembayaran &amp; Upload Bukti
+              </h2>
+              <p className="text-blue-100 text-xs sm:text-sm">
+                Berkas pendaftaran Anda telah disetujui. Silakan selesaikan pembayaran biaya sambungan baru di salah satu kanal resmi Aetra.
+              </p>
+            </div>
+
+            <div className="shrink-0 text-left md:text-right">
+              <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider block">
+                Total Biaya Sambungan
+              </span>
+              <div className="font-mono text-2xl sm:text-3xl font-black text-amber-300">
+                Rp {biayaSambungan.toLocaleString('id-ID')},-
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 sm:p-8 space-y-8">
+            {/* Nomor Pembayaran Banner */}
+            <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                  Nomor Pembayaran Resmi (Virtual Account)
+                </span>
+                <div className="font-mono text-2xl sm:text-3xl font-black text-slate-900 tracking-wider">
+                  {paymentCode}
+                </div>
+                <p className="text-xs text-slate-600">
+                  Gunakan kode di atas sebagai kode bayar / virtual account di seluruh kanal pembayaran resmi.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(paymentCode);
+                  setCopiedVa(true);
+                  setTimeout(() => setCopiedVa(false), 2000);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              >
+                {copiedVa ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedVa ? 'Tersalin!' : 'Salin Nomor Bayar'}</span>
+              </button>
+            </div>
+
+            {/* 9 Official Payment Channels with Step-by-Step Instructions */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Building className="w-4 h-4 text-[#005DAA]" />
+                    <span>9 Kanal Pembayaran Resmi PT Aetra Air Tangerang</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Pilih kanal pembayaran untuk melihat panduan langkah demi langkah cara transfer &amp; pembayaran:
                   </p>
                 </div>
               </div>
 
-              {/* Tracking Access Button */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => onNavigateTracking(activeExistingRegistration.noForm)}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#005DAA] hover:bg-[#004A88] text-white text-xs font-bold shadow-md hover:shadow-lg transition cursor-pointer"
-                >
-                  <Compass className="w-4 h-4 text-sky-200" />
-                  <span>Buka Live Tracking &rarr;</span>
-                </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {OFFICIAL_PAYMENT_CHANNELS.map((ch) => {
+                  const isSelected = selectedChannel === ch.id;
+                  return (
+                    <div
+                      key={ch.id}
+                      onClick={() => setSelectedChannel(ch.id)}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-[#005DAA] bg-blue-50/70 shadow-sm ring-1 ring-[#005DAA]'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <strong className="text-xs font-bold text-slate-900">{ch.name}</strong>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-[#005DAA]">
+                          {ch.badge}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">{ch.category}</p>
+                    </div>
+                  );
+                })}
               </div>
+
+              {/* Selected Channel Guide Details */}
+              {selectedChannel && (
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in duration-200">
+                  {(() => {
+                    const ch = OFFICIAL_PAYMENT_CHANNELS.find((c) => c.id === selectedChannel)!;
+                    return (
+                      <>
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-[#005DAA]" />
+                            <span className="text-xs font-bold text-slate-900">
+                              Cara Pembayaran via {ch.name}
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-mono font-bold text-[#005DAA]">
+                            Kode: {ch.code}
+                          </span>
+                        </div>
+                        <ol className="list-decimal list-inside space-y-1.5 text-xs text-slate-700">
+                          {ch.instructions.map((inst, idx) => (
+                            <li key={idx} className="leading-relaxed">
+                              {inst}
+                            </li>
+                          ))}
+                        </ol>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
-          {/* ======================================================== */}
-          {/* PAYMENT BOX & PROOF UPLOAD (KETIKA NOMOR BAYAR TERBIT)   */}
-          {/* ======================================================== */}
-          {isApprovedPaymentStage && (
-            <div className="space-y-4">
-              {/* Payment Instruction Banner */}
-              <div className="bg-linear-to-r from-emerald-600 via-teal-600 to-[#005DAA] text-white rounded-2xl p-6 shadow-md space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/20 pb-4">
-                  <div className="space-y-1">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-emerald-100 bg-white/20 px-3 py-1 rounded-full">
-                      Nomor Pembayaran Resmi (Virtual Account / Billing)
-                    </span>
-                    <div className="font-mono text-3xl sm:text-4xl font-black tracking-wider text-amber-200 pt-1">
-                      {activeExistingRegistration.nomorPembayaran || '8899-' + activeExistingRegistration.noSr}
+            {/* Upload Bukti Pembayaran Form (No sender name/account needed) */}
+            <div className="p-6 rounded-3xl bg-slate-50 border-2 border-slate-200 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Upload className="w-5 h-5 text-emerald-600" />
+                    <span>Upload Bukti Pembayaran Sambungan Baru</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Foto struk ATM, kasir minimarket, atau tangkapan layar m-banking Anda.
+                  </p>
+                </div>
+
+                {paymentProofData.dataUrl && (
+                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Bukti Terpasang
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kanal Pembayaran Yang Digunakan
+                  </label>
+                  <select
+                    value={paymentProofData.bank}
+                    onChange={(e) => setPaymentProofData((prev) => ({ ...prev, bank: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#005DAA]"
+                  >
+                    <option value="Bank Mandiri Virtual Account">Bank Mandiri (ATM / Livin)</option>
+                    <option value="Bank BCA Virtual Account">Bank BCA (m-BCA / KlikBCA)</option>
+                    <option value="Bank BRI (BRIVA)">Bank BRI (BRImo / BRIVA)</option>
+                    <option value="Bank BNI Virtual Account">Bank BNI (Mobile / ATM)</option>
+                    <option value="Bank Danamon & CIMB Niaga">Bank Danamon / CIMB Niaga</option>
+                    <option value="Indomaret / Ceriamart">Kasir Indomaret / Ceriamart</option>
+                    <option value="Alfamart / Alfamidi / Dan+Dan">Kasir Alfamart / Alfamidi</option>
+                    <option value="Kantor Pos Indonesia">Kantor Pos / Pospay</option>
+                    <option value="E-Wallet (GoPay/OVO/ShopeePay/DANA)">E-Wallet &amp; QRIS</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Tanggal Pembayaran
+                  </label>
+                  <input
+                    type="date"
+                    value={paymentProofData.tanggalBayar}
+                    onChange={(e) => setPaymentProofData((prev) => ({ ...prev, tanggalBayar: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#005DAA]"
+                  />
+                </div>
+              </div>
+
+              {/* Upload Dropzone & Camera Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <label className="flex-1 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-dashed border-slate-300 hover:border-[#005DAA] bg-white hover:bg-blue-50/50 text-slate-700 text-xs font-bold transition cursor-pointer">
+                  <Upload className="w-4 h-4 text-[#005DAA]" />
+                  <span>Pilih File Gambar Bukti (Galeri)</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={handlePaymentProofUpload}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCameraConfig({
+                      targetDocKey: 'payment',
+                      title: 'Foto Struk Pembayaran',
+                    });
+                    setIsCameraOpen(true);
+                  }}
+                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition shadow-xs"
+                >
+                  <Camera className="w-4 h-4 text-amber-400" />
+                  <span>Buka Kamera Ponsel</span>
+                </button>
+              </div>
+
+              {/* Preview Uploaded Proof */}
+              {paymentProofData.dataUrl && (
+                <div className="p-3 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={paymentProofData.dataUrl}
+                      alt="Bukti Bayar"
+                      className="w-14 h-14 object-cover rounded-xl border border-slate-200"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-slate-900 block">
+                        Struk Pembayaran Terlampir
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        {paymentProofData.bank} • {paymentProofData.tanggalBayar}
+                      </span>
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveViewer({
+                          isOpen: true,
+                          imageUrl: paymentProofData.dataUrl,
+                          title: 'Bukti Pembayaran Sambungan Baru',
+                          description: `${paymentProofData.bank} • ${paymentProofData.tanggalBayar}`,
+                        })
+                      }
+                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                      title="Lihat Gambar Penuh"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentProofData((prev) => ({ ...prev, dataUrl: '' }))}
+                      className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition"
+                      title="Hapus Bukti"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Confirm & Submit Payment Proof */}
+              <button
+                type="button"
+                onClick={handleSubmitCustomerPayment}
+                disabled={!paymentProofData.dataUrl}
+                className={`w-full py-4 rounded-2xl text-xs font-bold tracking-wider uppercase transition shadow-md flex items-center justify-center gap-2 cursor-pointer ${
+                  paymentProofData.dataUrl
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Kirim &amp; Konfirmasi Pembayaran Ke Kasir Aetra</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Multi-step Registration Form (5 Steps)
+  const steps = [
+    { number: 1, title: 'Identitas Pemohon', icon: <User className="w-4 h-4" /> },
+    { number: 2, title: 'Alamat Pemasangan', icon: <MapPin className="w-4 h-4" /> },
+    { number: 3, title: 'Persyaratan Administrasi', icon: <FileText className="w-4 h-4" /> },
+    { number: 4, title: 'Kondisi Bangunan & Tarif', icon: <Building2 className="w-4 h-4" /> },
+    { number: 5, title: 'Konfirmasi & Pengiriman', icon: <CheckSquare className="w-4 h-4" /> },
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Toast Notification */}
+      {notification && (
+        <div className="p-4 rounded-2xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-between shadow-lg animate-in slide-in-from-top-4 duration-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5" />
+            <span>{notification}</span>
+          </div>
+          <button onClick={() => setNotification(null)} className="text-white/80 hover:text-white">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Main Registration Card */}
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* Title Header with Auto Form Badge (Requirement 9 & 10) */}
+        <div className="p-6 sm:p-8 bg-gradient-to-r from-[#005DAA] via-[#004884] to-[#003868] text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-[#F37021] text-white shadow-xs">
+                PT AETRA AIR TANGERANG
+              </span>
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-white/20 text-white border border-white/30">
+                No. Form: #{formData.noForm} (Otomatis)
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+              Formulir Pendaftaran Sambungan Baru
+            </h1>
+            <p className="text-blue-100 text-xs sm:text-sm">
+              Lengkapi formulir permohonan pasang baru air bersih resmi berstandar Permenkes No. 2 Tahun 2023.
+            </p>
+          </div>
+
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition cursor-pointer"
+            >
+              Reset Isian
+            </button>
+          </div>
+        </div>
+
+        {/* Stepper Navigation */}
+        <div className="bg-slate-50 border-b border-slate-200 px-4 sm:px-6 py-3 overflow-x-auto">
+          <div className="flex items-center justify-between min-w-[550px] gap-2">
+            {steps.map((st) => {
+              const isCurrent = currentStep === st.number;
+              const isDone = currentStep > st.number;
+              return (
+                <button
+                  key={st.number}
+                  type="button"
+                  onClick={() => {
+                    if (st.number <= highestStepReached) {
+                      setCurrentStep(st.number);
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    isCurrent
+                      ? 'bg-[#005DAA] text-white shadow-sm'
+                      : isDone
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'text-slate-400 opacity-60'
+                  }`}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                      isCurrent
+                        ? 'bg-white text-[#005DAA]'
+                        : isDone
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {isDone ? '✓' : st.number}
+                  </span>
+                  <span>{st.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Form Body */}
+        <div className="p-6 sm:p-8">
+          {/* STEP 1: IDENTITAS PEMOHON */}
+          {currentStep === 1 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <User className="w-5 h-5 text-[#005DAA]" />
+                  <span>1. Identitas Pemohon</span>
+                </h3>
+                <span className="text-xs text-slate-400 font-mono">
+                  No. SR: #{formData.noSr}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Lengkap Pemohon (Sesuai KTP) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.namaKtp}
+                    onChange={(e) => handleUppercaseChange('namaKtp', e.target.value)}
+                    placeholder="CONTOH: LAILATUL YOVI"
+                    className="w-full uppercase px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#005DAA] text-xs font-semibold"
+                  />
+                  {errors.namaKtp && <p className="text-[11px] text-red-500 mt-1">{errors.namaKtp}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nomor Induk Kependudukan (NIK / e-KTP 16 Digit) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={16}
+                    required
+                    value={formData.noKtp}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, noKtp: e.target.value.replace(/\D/g, '') }))}
+                    placeholder="367101XXXXXXXXXX"
+                    className="w-full font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#005DAA] text-xs font-semibold"
+                  />
+                  {errors.noKtp && <p className="text-[11px] text-red-500 mt-1">{errors.noKtp}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nomor WhatsApp / Telepon Aktif <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.telpHp}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, telpHp: e.target.value }))}
+                    placeholder="087788224645"
+                    className="w-full font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#005DAA] text-xs font-semibold"
+                  />
+                  {errors.telpHp && <p className="text-[11px] text-red-500 mt-1">{errors.telpHp}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Alamat Email Pemohon <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value.toLowerCase() }))}
+                    placeholder="nama@email.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#005DAA] text-xs font-semibold"
+                  />
+                  {errors.email && <p className="text-[11px] text-red-500 mt-1">{errors.email}</p>}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Alamat Lengkap Sesuai KTP <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.alamatKtp}
+                    onChange={(e) => handleUppercaseChange('alamatKtp', e.target.value)}
+                    placeholder="JL. RAYA SERPONG NO. 12, RT 002 / RW 005"
+                    className="w-full uppercase px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#005DAA] text-xs font-semibold"
+                  />
+                  {errors.alamatKtp && <p className="text-[11px] text-red-500 mt-1">{errors.alamatKtp}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Provinsi (KTP)
+                  </label>
+                  <select
+                    value={formData.provinsiKtp}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        provinsiKtp: e.target.value,
+                        kotaKtp: '',
+                        kecamatanKtp: '',
+                        kelurahanKtp: '',
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold"
+                  >
+                    <option value="">Pilih Provinsi...</option>
+                    {INDONESIA_PROVINCES_DATA.map((prov) => (
+                      <option key={prov.name} value={prov.name}>
+                        {prov.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kota / Kabupaten (KTP)
+                  </label>
+                  <select
+                    value={formData.kotaKtp}
+                    disabled={!formData.provinsiKtp}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        kotaKtp: e.target.value,
+                        kecamatanKtp: '',
+                        kelurahanKtp: '',
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold disabled:bg-slate-100"
+                  >
+                    <option value="">Pilih Kota / Kabupaten...</option>
+                    {ktpCityOptions.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kecamatan (KTP)
+                  </label>
+                  <select
+                    value={formData.kecamatanKtp}
+                    disabled={!formData.kotaKtp}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        kecamatanKtp: e.target.value,
+                        kelurahanKtp: '',
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold disabled:bg-slate-100"
+                  >
+                    <option value="">Pilih Kecamatan...</option>
+                    {ktpDistrictOptions.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kelurahan / Desa (KTP)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.kelurahanKtp}
+                    onChange={(e) => handleUppercaseChange('kelurahanKtp', e.target.value)}
+                    placeholder="KELURAHAN / DESA"
+                    className="w-full uppercase px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Pekerjaan Pemohon
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.pekerjaan}
+                    onChange={(e) => handleUppercaseChange('pekerjaan', e.target.value)}
+                    placeholder="KARYAWAN SWASTA / WIRAUSAHA / PNS"
+                    className="w-full uppercase px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Status Kepemilikan Bangunan
+                  </label>
+                  <select
+                    value={formData.statusKepemilikan}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, statusKepemilikan: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold"
+                  >
+                    <option value="RUMAH SENDIRI">Rumah Sendiri (Milik Pribadi)</option>
+                    <option value="SEWA / KONTRAK">Sewa / Kontrak (Perlu Surat Kuasa)</option>
+                    <option value="RUMAH DINAS">Rumah Dinas Instansi</option>
+                    <option value="MILIK KELUARGA">Milik Keluarga / Waris</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: ALAMAT PEMASANGAN */}
+          {currentStep === 2 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-[#005DAA]" />
+                  <span>2. Alamat Pemasangan</span>
+                </h3>
+                <span className="text-xs text-slate-400">
+                  Titik Fisik Sambungan Air
+                </span>
+              </div>
+
+              {/* Interactive Google Maps Pin Locator */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800">
+                  Pilih Titik Lokasi Pemasangan via Peta Interaktif
+                </label>
+                <InteractiveMapPicker
+                  initialLat={formData.dataPasang?.gpsLat || '-6.236600'}
+                  initialLng={formData.dataPasang?.gpsLong || '106.562100'}
+                  onLocationChange={(lat, lng) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      dataPasang: {
+                        ...prev.dataPasang,
+                        gpsLat: lat,
+                        gpsLong: lng,
+                      },
+                    }));
+                  }}
+                  onLocationSelect={(lat, lng, address) => {
+                    const numLat = Number(lat);
+                    const numLng = Number(lng);
+                    setFormData((prev) => ({
+                      ...prev,
+                      dataPasang: {
+                        ...prev.dataPasang,
+                        gpsLat: isNaN(numLat) ? String(lat) : numLat.toFixed(6),
+                        gpsLong: isNaN(numLng) ? String(lng) : numLng.toFixed(6),
+                      },
+                      alamatPasang: address ? address.toUpperCase() : prev.alamatPasang,
+                    }));
+                  }}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Alamat Jalan / No. Rumah (Titik Pasang) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.alamatPasang}
+                    onChange={(e) => handleUppercaseChange('alamatPasang', e.target.value)}
+                    placeholder="JL. BOULEVARD RAYA BLOK A NO. 15"
+                    className="w-full uppercase px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#005DAA] text-xs font-semibold"
+                  />
+                  {errors.alamatPasang && <p className="text-[11px] text-red-500 mt-1">{errors.alamatPasang}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    RT / RW (Titik Pasang)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.rtRwPasang}
+                    onChange={(e) => handleUppercaseChange('rtRwPasang', e.target.value)}
+                    placeholder="RT 003 / RW 008"
+                    className="w-full uppercase px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kode Pos
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={5}
+                    value={formData.kodePosPasang}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, kodePosPasang: e.target.value.replace(/\D/g, '') }))}
+                    placeholder="15810"
+                    className="w-full font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kecamatan (Wilayah Kerja Aetra) <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.kecamatanPasang}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        kecamatanPasang: e.target.value,
+                        desaPasang: '',
+                        kelurahanPasang: '',
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold"
+                  >
+                    <option value="">Pilih Kecamatan...</option>
+                    {installDistrictOptions.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.kecamatanPasang && <p className="text-[11px] text-red-500 mt-1">{errors.kecamatanPasang}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kelurahan / Desa <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.desaPasang || formData.kelurahanPasang}
+                    disabled={!formData.kecamatanPasang}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        desaPasang: e.target.value,
+                        kelurahanPasang: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold disabled:bg-slate-100"
+                  >
+                    <option value="">Pilih Kelurahan / Desa...</option>
+                    {installSubdistrictOptions.map((sd) => (
+                      <option key={sd} value={sd}>
+                        {sd}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.desaPasang && <p className="text-[11px] text-red-500 mt-1">{errors.desaPasang}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: PERSYARATAN ADMINISTRASI */}
+          {currentStep === 3 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[#005DAA]" />
+                  <span>3. Persyaratan Administrasi</span>
+                </h3>
+                <span className="text-xs text-slate-400">
+                  Upload Dokumen Syarat Sah
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. e-KTP */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <CreditCard className="w-4 h-4 text-[#005DAA]" />
+                      <span>Foto e-KTP Asli <strong className="text-red-500">*</strong></span>
+                    </span>
+                    {formData.persyaratanFiles?.ktp && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        ✓ Terupload
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 hover:border-[#005DAA] text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload File</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleDocFileUpload('ktp', e)} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleDocCameraCapture('ktp')}
+                      className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Kamera</span>
+                    </button>
+                  </div>
+
+                  {formData.persyaratanFiles?.ktp && (
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs">
+                      <span className="text-slate-600 truncate max-w-[150px]">{formData.persyaratanFiles.ktp.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveViewer({
+                              isOpen: true,
+                              imageUrl: formData.persyaratanFiles!.ktp!.dataUrl,
+                              title: 'Foto e-KTP Pemohon',
+                            })
+                          }
+                          className="p-1 text-[#005DAA] hover:bg-blue-50 rounded-lg"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDoc('ktp')}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {errors.ktp && <p className="text-[11px] text-red-500">{errors.ktp}</p>}
+                </div>
+
+                {/* 2. Kartu Keluarga (KK) */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-[#005DAA]" />
+                      <span>Foto Kartu Keluarga (KK)</span>
+                    </span>
+                    {formData.persyaratanFiles?.kk && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        ✓ Terupload
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 hover:border-[#005DAA] text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload File</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleDocFileUpload('kk', e)} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleDocCameraCapture('kk')}
+                      className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Kamera</span>
+                    </button>
+                  </div>
+
+                  {formData.persyaratanFiles?.kk && (
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs">
+                      <span className="text-slate-600 truncate max-w-[150px]">{formData.persyaratanFiles.kk.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveViewer({
+                              isOpen: true,
+                              imageUrl: formData.persyaratanFiles!.kk!.dataUrl,
+                              title: 'Foto Kartu Keluarga (KK)',
+                            })
+                          }
+                          className="p-1 text-[#005DAA] hover:bg-blue-50 rounded-lg"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDoc('kk')}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Pajak Bumi dan Bangunan (PBB) - Requirement 12 */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <Home className="w-4 h-4 text-[#005DAA]" />
+                      <span>Pajak Bumi dan Bangunan (PBB) <strong className="text-red-500">*</strong></span>
+                    </span>
+                    {formData.persyaratanFiles?.pbb && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        ✓ Terupload
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 hover:border-[#005DAA] text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload File PBB</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleDocFileUpload('pbb', e)} />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleDocCameraCapture('pbb')}
+                      className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Kamera</span>
+                    </button>
+                  </div>
+
+                  {formData.persyaratanFiles?.pbb && (
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200 text-xs">
+                      <span className="text-slate-600 truncate max-w-[250px]">{formData.persyaratanFiles.pbb.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveViewer({
+                              isOpen: true,
+                              imageUrl: formData.persyaratanFiles!.pbb!.dataUrl,
+                              title: 'Foto Pajak Bumi dan Bangunan (PBB)',
+                            })
+                          }
+                          className="p-1 text-[#005DAA] hover:bg-blue-50 rounded-lg"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDoc('pbb')}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {errors.pbb && <p className="text-[11px] text-red-500">{errors.pbb}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: KONDISI BANGUNAN & TARIF (Requirement 14 & 15) */}
+          {currentStep === 4 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-[#005DAA]" />
+                  <span>4. Kondisi Bangunan &amp; Tarif</span>
+                </h3>
+                <span className="text-xs text-slate-400">
+                  Peruntukan Persil
+                </span>
+              </div>
+
+              {/* 3 Main Categories (Sosial, Rumah Tangga, Usaha) */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-800">
+                  Pilih Kategori Peruntukan Bangunan:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setKategoriFungsi('rumah_tangga');
+                      setFormData((prev) => ({ ...prev, fungsiBangunan: 'Rumah Tangga', golonganTarif: 'R2 = Rumah Tangga 2' }));
+                    }}
+                    className={`p-4 rounded-2xl border text-left transition cursor-pointer flex flex-col gap-2 ${
+                      kategoriFungsi === 'rumah_tangga'
+                        ? 'border-[#005DAA] bg-blue-50/80 ring-2 ring-[#005DAA]/30'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 text-[#005DAA] flex items-center justify-center">
+                      <Home className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900">1. Rumah Tangga</h4>
+                      <p className="text-[11px] text-slate-500">Hunian tempat tinggal keluarga (R1 - R4)</p>
+                    </div>
+                  </button>
 
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard?.writeText(activeExistingRegistration.nomorPembayaran || ('8899-' + activeExistingRegistration.noSr));
-                      setNotification('Nomor Pembayaran berhasil disalin!');
-                      setTimeout(() => setNotification(null), 3000);
+                      setKategoriFungsi('sosial_instansi');
+                      setFormData((prev) => ({ ...prev, fungsiBangunan: SOSIAL_INSTANSI_OPTIONS[0], golonganTarif: 'Sosial & Instansi' }));
                     }}
-                    className="px-5 py-2.5 rounded-xl bg-white text-emerald-900 font-black text-xs hover:bg-emerald-50 shadow-md transition flex items-center justify-center gap-2 cursor-pointer self-start sm:self-center"
+                    className={`p-4 rounded-2xl border text-left transition cursor-pointer flex flex-col gap-2 ${
+                      kategoriFungsi === 'sosial_instansi'
+                        ? 'border-[#005DAA] bg-blue-50/80 ring-2 ring-[#005DAA]/30'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
                   >
-                    <Copy className="w-4 h-4 text-emerald-700" />
-                    <span>Salin Nomor Bayar</span>
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                      <Landmark className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900">2. Sosial &amp; Instansi</h4>
+                      <p className="text-[11px] text-slate-500">Tempat ibadah, yayasan, panti, kantor dinas</p>
+                    </div>
                   </button>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-blue-50">
-                  <div className="bg-white/10 p-3 rounded-xl backdrop-blur-xs">
-                    <span className="text-[10px] text-emerald-200 block">Total Biaya Sambungan</span>
-                    <strong className="text-base text-white font-mono">
-                      Rp {((activeExistingRegistration.biayaSambungan || 1371545)).toLocaleString('id-ID')}
-                    </strong>
-                  </div>
-
-                  <div className="bg-white/10 p-3 rounded-xl backdrop-blur-xs">
-                    <span className="text-[10px] text-emerald-200 block">Metode Pembayaran</span>
-                    <strong className="text-xs text-white">ATM, m-Banking, Indomaret, Alfamart</strong>
-                  </div>
-
-                  <div className="bg-white/10 p-3 rounded-xl backdrop-blur-xs">
-                    <span className="text-[10px] text-emerald-200 block">Status Pembayaran Saat Ini</span>
-                    <strong className="text-xs text-amber-300 font-bold">
-                      {activeExistingRegistration.statusPembayaran || (activeExistingRegistration.status_pendaftaran === 'PAYMENT_CONFIRMED' ? 'Menunggu Verifikasi Kasir' : 'Menunggu Pelunasan')}
-                    </strong>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setKategoriFungsi('usaha_bisnis');
+                      setFormData((prev) => ({ ...prev, fungsiBangunan: USAHA_OPTIONS[0], golonganTarif: 'Niaga & Industri' }));
+                    }}
+                    className={`p-4 rounded-2xl border text-left transition cursor-pointer flex flex-col gap-2 ${
+                      kategoriFungsi === 'usaha_bisnis'
+                        ? 'border-[#005DAA] bg-blue-50/80 ring-2 ring-[#005DAA]/30'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                      <Store className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900">3. Usaha &amp; Bisnis</h4>
+                      <p className="text-[11px] text-slate-500">Kios, ruko, restoran, UMKM, niaga</p>
+                    </div>
+                  </button>
                 </div>
               </div>
 
-              {/* Upload Bukti Pembayaran & Konfirmasi Pelunasan */}
-              <div className="bg-sky-50/60 p-5 rounded-2xl border-2 border-sky-200 space-y-4">
-                <div className="flex items-center gap-2.5 text-slate-800 font-bold text-sm">
-                  <ReceiptText className="w-5 h-5 text-[#005DAA]" />
-                  <span>Konfirmasi Pembayaran &amp; Upload Bukti Transfer</span>
+              {/* Sub-Category Selectors */}
+              {kategoriFungsi === 'sosial_instansi' && (
+                <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2 animate-in fade-in duration-200">
+                  <label className="block text-xs font-bold text-emerald-950">
+                    Opsi Jenis Bangunan Sosial / Instansi:
+                  </label>
+                  <select
+                    value={formData.fungsiBangunan}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, fungsiBangunan: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 bg-white text-xs font-semibold"
+                  >
+                    {SOSIAL_INSTANSI_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Setelah Anda melakukan transfer atau pelunasan di ATM / Bank / Minimarket, silakan unggah foto struk bukti pembayaran untuk diverifikasi petugas kasir Aetra:
-                </p>
+              )}
 
-                {activeExistingRegistration.paymentProof ? (
-                  <div className="bg-white p-4 rounded-xl border border-emerald-300 shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        Bukti Pembayaran Telah Diunggah
-                      </span>
-                      <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
-                        Status: Menunggu Verifikasi Kasir
-                      </span>
-                    </div>
+              {kategoriFungsi === 'usaha_bisnis' && (
+                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2 animate-in fade-in duration-200">
+                  <label className="block text-xs font-bold text-amber-950">
+                    Opsi Jenis Usaha / Komersial:
+                  </label>
+                  <select
+                    value={formData.fungsiBangunan}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, fungsiBangunan: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 bg-white text-xs font-semibold"
+                  >
+                    {USAHA_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <span className="text-slate-500 block">Bank / Saluran:</span>
-                        <strong className="text-slate-800">{activeExistingRegistration.paymentProof.bank}</strong>
-                        <span className="text-slate-500 block mt-1">Tanggal Bayar:</span>
-                        <strong className="text-slate-800">{activeExistingRegistration.paymentProof.tanggalBayar}</strong>
-                      </div>
+              {/* GOLONGAN TARIF HANYA DITAMPILKAN PADA OPSI RUMAH TANGGA (Requirement 14) */}
+              {kategoriFungsi === 'rumah_tangga' && (
+                <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-2 animate-in fade-in duration-200">
+                  <label className="block text-xs font-bold text-[#005DAA]">
+                    Golongan Tarif Rumah Tangga:
+                  </label>
+                  <select
+                    value={formData.golonganTarif}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, golonganTarif: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-blue-300 bg-white text-xs font-semibold"
+                  >
+                    <option value="R1 = Rumah Tangga 1 (Sederhana)">R1 - Rumah Tangga 1 (Sederhana s/d 36m²)</option>
+                    <option value="R2 = Rumah Tangga 2 (Menengah)">R2 - Rumah Tangga 2 (Menengah 37 - 70m²)</option>
+                    <option value="R3 = Rumah Tangga 3 (Atas)">R3 - Rumah Tangga 3 (Atas 71 - 120m²)</option>
+                    <option value="R4 = Rumah Tangga 4 (Mewah)">R4 - Rumah Tangga 4 (Mewah &gt; 120m²)</option>
+                  </select>
+                </div>
+              )}
 
-                      {activeExistingRegistration.paymentProof.dataUrl && (
-                        <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-video flex items-center justify-center">
-                          <img
-                            src={activeExistingRegistration.paymentProof.dataUrl}
-                            alt="Bukti Transfer"
-                            className="max-h-full object-contain"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white p-4 sm:p-5 rounded-xl border border-sky-200 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Bank / Saluran Pembayaran <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={paymentProofData.bank}
-                          onChange={(e) => setPaymentProofData({ ...paymentProofData, bank: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                        >
-                          <option value="BCA (Virtual Account)">BCA (Virtual Account)</option>
-                          <option value="Mandiri (Bill Payment)">Mandiri (Bill Payment)</option>
-                          <option value="BRI (BRIVA)">BRI (BRIVA)</option>
-                          <option value="BNI (Virtual Account)">BNI (Virtual Account)</option>
-                          <option value="Indomaret / Alfamart">Indomaret / Alfamart</option>
-                          <option value="QRIS / Dompet Digital">QRIS / Dompet Digital</option>
-                          <option value="Loket Resmi Aetra">Loket Resmi Aetra</option>
-                        </select>
-                      </div>
+              {/* Metrik Luas Bangunan & Penghuni */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Luas Bangunan (m²) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={formData.luasBangunan}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, luasBangunan: e.target.value }))}
+                    placeholder="45"
+                    className="w-full font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                  />
+                  {errors.luasBangunan && <p className="text-[11px] text-red-500 mt-1">{errors.luasBangunan}</p>}
+                </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Nama Pengirim / Pemilik Rekening
-                        </label>
-                        <input
-                          type="text"
-                          value={paymentProofData.namaPengirim}
-                          onChange={(e) => setPaymentProofData({ ...paymentProofData, namaPengirim: e.target.value })}
-                          placeholder={activeExistingRegistration.namaKtp || 'Nama pemilik rekening'}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                        />
-                      </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Jumlah Lantai
+                  </label>
+                  <select
+                    value={formData.kondisiBangunan.jumlahLantai}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        kondisiBangunan: { ...prev.kondisiBangunan, jumlahLantai: e.target.value },
+                      }))
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold"
+                  >
+                    <option value="1">1 Lantai</option>
+                    <option value="2">2 Lantai</option>
+                    <option value="3">3 Lantai atau Lebih</option>
+                  </select>
+                </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-slate-800 mb-1">
-                          Tanggal Pembayaran <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          value={paymentProofData.tanggalBayar}
-                          onChange={(e) => setPaymentProofData({ ...paymentProofData, tanggalBayar: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Upload Struk Foto */}
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-slate-800">
-                        Foto Bukti Struk / Screenshot Transfer <span className="text-red-500">*</span>
-                      </label>
-                      
-                      {paymentProofData.fileUrl ? (
-                        <div className="relative border rounded-xl overflow-hidden bg-slate-100 max-w-sm aspect-video flex items-center justify-center">
-                          <img
-                            src={paymentProofData.fileUrl}
-                            alt="Preview Struk"
-                            className="max-h-full object-contain"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setPaymentProofData({ ...paymentProofData, fileUrl: '' })}
-                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-md cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setCameraModalConfig({
-                              isOpen: true,
-                              targetType: 'payment',
-                              title: 'Foto Struk Pembayaran via Kamera',
-                              guideType: 'payment'
-                            })}
-                            className="px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#005DAA] text-xs font-bold flex items-center gap-2 hover:bg-blue-100 transition cursor-pointer"
-                          >
-                            <Camera className="w-4 h-4" />
-                            <span>Ambil via Kamera</span>
-                          </button>
-
-                          <label className="px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition cursor-pointer">
-                            <Upload className="w-4 h-4" />
-                            <span>Pilih File Gambar</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                  setPaymentProofData((prev) => ({
-                                    ...prev,
-                                    fileUrl: reader.result as string,
-                                  }));
-                                };
-                                reader.readAsDataURL(file);
-                              }}
-                            />
-                          </label>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Tombol Konfirmasi Pembayaran */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={handleConfirmPayment}
-                        disabled={isSubmittingPayment}
-                        className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                      >
-                        <Send className="w-4 h-4 text-emerald-200" />
-                        <span>Saya Telah Melakukan Pembayaran (Kirim Konfirmasi)</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Jumlah Penghuni (Jiwa)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.kondisiBangunan.jumlahPenghuni}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        kondisiBangunan: { ...prev.kondisiBangunan, jumlahPenghuni: e.target.value },
+                      }))
+                    }
+                    placeholder="4"
+                    className="w-full font-mono px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold"
+                  />
+                </div>
               </div>
             </div>
           )}
 
-          {/* Summary Details Grid */}
-          <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Nomor Formulir</span>
-                <span className="font-mono text-sm font-black text-slate-900 block">#{activeExistingRegistration.noForm}</span>
-              </div>
-
-              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block">No. SR (Sambungan)</span>
-                <span className="font-mono text-sm font-black text-[#005DAA] block">SR - {activeExistingRegistration.noSr || '-'}</span>
-              </div>
-
-              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block">ID Pelanggan</span>
-                <span className="font-mono text-sm font-black text-slate-800 block">
-                  {activeExistingRegistration.idPelanggan ? (
-                    <span className="text-emerald-700 font-black">#{activeExistingRegistration.idPelanggan}</span>
-                  ) : (
-                    <span className="text-slate-400 text-xs italic font-normal">Diterbitkan setelah lunas &amp; meter terpasang</span>
-                  )}
+          {/* STEP 5: KONFIRMASI & PENGIRIMAN */}
+          {currentStep === 5 && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <CheckSquare className="w-5 h-5 text-[#005DAA]" />
+                  <span>5. Konfirmasi &amp; Pengiriman</span>
+                </h3>
+                <span className="text-xs text-slate-400 font-mono">
+                  No. Form: #{formData.noForm}
                 </span>
               </div>
 
-              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Golongan Tarif</span>
-                <span className="font-semibold text-xs text-slate-800 block truncate">{activeExistingRegistration.golonganTarif || 'Rumah Tangga'}</span>
-              </div>
-            </div>
+              {/* Summary Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Ringkasan Data Permohonan Sambungan Baru:
+                </h4>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-1">
-              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Nama Pemohon (KTP):</span>
-                <strong className="text-slate-900 text-sm block">{activeExistingRegistration.namaKtp}</strong>
-                <span className="text-[11px] text-slate-500 block">NIK: {activeExistingRegistration.noKtp} &bull; HP/WA: {activeExistingRegistration.telpHp}</span>
-              </div>
-              <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase font-semibold block">Alamat Pemasangan:</span>
-                <p className="text-slate-800 text-xs font-medium leading-relaxed">
-                  {activeExistingRegistration.alamatPasang}, RT/RW {activeExistingRegistration.rtRwPasang}, Kel. {activeExistingRegistration.kelurahanPasang || activeExistingRegistration.desaPasang}, Kec. {activeExistingRegistration.kecamatanPasang}, {activeExistingRegistration.kotaPasang || activeExistingRegistration.provinsiPasang} {activeExistingRegistration.kodePosPasang ? `(${activeExistingRegistration.kodePosPasang})` : ''}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Footer */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200">
-            <span className="text-xs text-slate-500 flex items-center gap-1.5">
-              <Info className="w-4 h-4 text-blue-600 shrink-0" />
-              Petugas Aetra dan Admin memverifikasi berkas dan memproses sambungan air bersih ke lokasi Anda.
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Form editing is locked once approved/payment number issued */}
-              {isApprovedPaymentStage ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-semibold border border-slate-200" title="Formulir telah disetujui & terkunci untuk tahapan pembayaran">
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Formulir Terkunci (Tahap Pembayaran)</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-slate-500 block">Nama Pemohon:</span>
+                    <strong className="text-slate-900 uppercase">{formData.namaKtp || '-'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">NIK / No. KTP:</span>
+                    <strong className="text-slate-900 font-mono">{formData.noKtp || '-'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">No. Telepon / WhatsApp:</span>
+                    <strong className="text-slate-900 font-mono">{formData.telpHp || '-'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Alamat Email:</span>
+                    <strong className="text-slate-900">{formData.email || '-'}</strong>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-slate-500 block">Alamat Pemasangan:</span>
+                    <strong className="text-slate-900 uppercase">
+                      {formData.alamatPasang}, RT/RW {formData.rtRwPasang}, Desa {formData.desaPasang || formData.kelurahanPasang}, Kec. {formData.kecamatanPasang}, {formData.kotaPasang}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Peruntukan &amp; Tarif:</span>
+                    <strong className="text-[#005DAA] font-bold">
+                      {formData.fungsiBangunan} ({formData.golonganTarif})
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Kelengkapan Dokumen:</span>
+                    <strong className="text-emerald-700">
+                      e-KTP {formData.persyaratanFiles?.ktp ? '✓' : '-'}, PBB {formData.persyaratanFiles?.pbb ? '✓' : '-'}
+                    </strong>
+                  </div>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormData(activeExistingRegistration);
-                    setForceShowForm(true);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
-                >
-                  Buka / Edit Detail Formulir
-                </button>
-              )}
-
-              {onViewReceipt && (
-                <button
-                  type="button"
-                  onClick={() => onViewReceipt(activeExistingRegistration)}
-                  className="px-4 py-2 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 text-[#005DAA] font-bold text-xs transition cursor-pointer"
-                >
-                  Lihat Bukti Tanda Terima / SPK
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-        )
-      ) : (
-        /* ======================================================== */
-        /* WIZARD MULTI-SECTION REGISTRATION FORM                   */
-        /* ======================================================== */
-        <div className="bg-white rounded-2xl border border-slate-300 shadow-md overflow-hidden">
-          {/* Form Header */}
-          <div className="bg-linear-to-r from-[#005DAA] via-[#004B8A] to-[#003868] text-white p-6 border-b-4 border-[#F37021]">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                <div className="bg-white px-3.5 py-1.5 rounded-xl inline-flex items-center shadow-xs">
-                  <AetraLogo size="sm" variant="horizontal" />
-                </div>
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight uppercase">
-                  Pendaftaran Sambungan Baru
-                </h1>
-                <p className="text-xs text-blue-100">
-                  Surat Permohonan Sambungan Rumah (SR) PT Aetra Air Tangerang &bull; Formulir Pendaftaran 6 Tahap
-                </p>
               </div>
 
-              {lastSavedTime && (
-                <div className="bg-white/10 backdrop-blur-xs border border-white/20 px-3 py-1.5 rounded-xl text-right shrink-0">
-                  <span className="text-[10px] text-blue-200 block">Draf Tersimpan Otomatis</span>
-                  <span className="text-xs font-mono font-bold text-emerald-300">Pukul {lastSavedTime} WIB</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Stepper Navigation Bar */}
-          <div className="bg-slate-100 border-b border-slate-200 p-3 sm:p-4 overflow-x-auto no-scrollbar">
-            <div className="flex items-center justify-between min-w-[700px] gap-2">
-              {SECTIONS.map((sec) => {
-                const isCurrent = currentStep === sec.number;
-                const isCompleted = sec.number < currentStep || highestStepReached > sec.number;
-                const isClickable = sec.number <= highestStepReached || sec.number === currentStep + 1;
-
-                return (
-                  <button
-                    key={sec.number}
-                    type="button"
-                    onClick={() => handleJumpToStep(sec.number)}
-                    disabled={!isClickable}
-                    className={`flex-1 flex items-center gap-2.5 p-2.5 rounded-xl transition text-left cursor-pointer ${
-                      isCurrent
-                        ? 'bg-white border-2 border-[#005DAA] shadow-xs text-[#005DAA] ring-2 ring-blue-100'
-                        : isCompleted
-                        ? 'bg-white/80 hover:bg-white border border-emerald-300 text-slate-800'
-                        : isClickable
-                        ? 'bg-slate-50 hover:bg-white border border-slate-200 text-slate-600'
-                        : 'opacity-50 cursor-not-allowed border border-transparent text-slate-400'
-                    }`}
-                  >
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition ${
-                        isCurrent
-                          ? 'bg-[#005DAA] text-white'
-                          : isCompleted
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {isCompleted && !isCurrent ? <Check className="w-4 h-4" /> : sec.number}
-                    </div>
-                    <div className="min-w-0">
-                      <span className={`block text-xs font-bold truncate ${isCurrent ? 'text-[#005DAA]' : 'text-slate-800'}`}>
-                        {sec.title}
-                      </span>
-                      <span className="block text-[10px] text-slate-500 truncate">
-                        {sec.subtitle}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Progress Bar */}
-            <div className="mt-3 bg-slate-200 h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-linear-to-r from-[#005DAA] to-[#F37021] h-full transition-all duration-300"
-                style={{ width: `${(currentStep / 6) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Validation Alert */}
-          {validationErrors.length > 0 && (
-            <div className="m-6 mb-0 bg-red-50 border-2 border-red-300 rounded-xl p-4 text-xs text-red-900 space-y-2 animate-in fade-in">
-              <div className="flex items-center gap-2 font-bold text-red-900">
-                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-                <span>Mohon lengkapi seluruh isian wajib bertanda bintang (*) pada bagian ini:</span>
+              {/* Agreement Checkbox */}
+              <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="persetujuanCheck"
+                  checked={formData.persetujuan}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, persetujuan: e.target.checked }))}
+                  className="mt-1 w-4 h-4 text-[#005DAA] rounded-md border-slate-300 focus:ring-[#005DAA]"
+                />
+                <label htmlFor="persetujuanCheck" className="text-xs text-slate-700 leading-relaxed cursor-pointer">
+                  Saya menyatakan bahwa seluruh data yang diisikan adalah benar dan sah. Saya bersedia mematuhi seluruh Syarat dan Ketentuan Berlangganan resmi PT Aetra Air Tangerang.
+                </label>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {validationErrors.map((err, idx) => (
-                  <span key={idx} className="px-2.5 py-1 rounded-lg bg-red-100 text-red-800 font-semibold text-[11px] border border-red-200">
-                    &bull; {err}
-                  </span>
-                ))}
-              </div>
+              {errors.persetujuan && <p className="text-[11px] text-red-500">{errors.persetujuan}</p>}
+
+              {/* Trigger S&K Modal & Submit Button (Requirement 9) */}
+              <button
+                type="button"
+                onClick={handleTriggerFinalRegistration}
+                className="w-full py-4 rounded-2xl bg-[#005DAA] hover:bg-[#004884] text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Daftar Sambungan Baru &amp; Baca S&amp;K</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           )}
 
-          {/* FORM CONTAINER */}
-          <form onSubmit={currentStep === 6 ? handleFinalSubmit : (e) => { e.preventDefault(); handleNextStep(); }} noValidate className="p-6 sm:p-8 space-y-6">
-
-            {/* ======================================================== */}
-            {/* SECTION 1: DATA DIRI PEMOHON                             */}
-            {/* ======================================================== */}
-            {currentStep === 1 && (
-              <section className="space-y-6 animate-in fade-in">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#005DAA] border border-blue-200">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 1: Data Diri Pemohon</h2>
-                    <p className="text-xs text-slate-500">Isi data identitas diri pemohon sesuai KTP resmi</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Tanggal Pendaftaran <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.tanggal}
-                      onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      No. SR (Sambungan Rumah) <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-300">
-                        SR -
-                      </span>
-                      <input
-                        type="text"
-                        required
-                        value={formData.noSr}
-                        onChange={(e) => {
-                          setFormData({ ...formData, noSr: e.target.value });
-                          setErrorFields((prev) => ({ ...prev, noSr: false }));
-                        }}
-                        placeholder="Contoh: 168392"
-                        className={`w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold focus:outline-hidden transition ${
-                          errorFields.noSr ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                        }`}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Nama Lengkap (Sesuai KTP) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.namaKtp}
-                      onChange={(e) => {
-                        setFormData({ ...formData, namaKtp: e.target.value });
-                        setErrorFields((prev) => ({ ...prev, namaKtp: false }));
-                      }}
-                      placeholder="Nama lengkap sesuai e-KTP"
-                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-hidden transition ${
-                        errorFields.namaKtp ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Nomor KTP (NIK 16 Digit) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={16}
-                      required
-                      value={formData.noKtp}
-                      onChange={(e) => {
-                        setFormData({ ...formData, noKtp: e.target.value });
-                        setErrorFields((prev) => ({ ...prev, noKtp: false }));
-                      }}
-                      placeholder="16 digit NIK e-KTP"
-                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-mono font-bold focus:outline-hidden transition ${
-                        errorFields.noKtp ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Pekerjaan Pemohon <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.pekerjaan}
-                      onChange={(e) => {
-                        setFormData({ ...formData, pekerjaan: e.target.value });
-                        setErrorFields((prev) => ({ ...prev, pekerjaan: false }));
-                      }}
-                      placeholder="Contoh: Karyawan Swasta, Wiraswasta, PNS"
-                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium focus:outline-hidden transition ${
-                        errorFields.pekerjaan ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Nomor HP / WhatsApp Aktif <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={formData.telpHp}
-                      onChange={(e) => {
-                        setFormData({ ...formData, telpHp: e.target.value });
-                        setErrorFields((prev) => ({ ...prev, telpHp: false }));
-                      }}
-                      placeholder="0812-xxxx-xxxx"
-                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium focus:outline-hidden transition ${
-                        errorFields.telpHp ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Email Pemohon (Opsional)
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="email@domain.com"
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-              </section>
+          {/* Navigation Controls (Back / Next) */}
+          <div className="flex items-center justify-between pt-6 border-t border-slate-100 mt-6">
+            {currentStep > 1 ? (
+              <button
+                type="button"
+                onClick={handlePrevStep}
+                className="px-5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Kembali</span>
+              </button>
+            ) : (
+              <div />
             )}
 
-            {/* ======================================================== */}
-            {/* SECTION 2: ALAMAT KTP LENGKAP (WILAYAH INDONESIA LENGKAP) */}
-            {/* ======================================================== */}
-            {currentStep === 2 && (
-              <section className="space-y-6 animate-in fade-in">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#005DAA] border border-blue-200">
-                    <MapPin className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 2: Alamat KTP Pemohon</h2>
-                    <p className="text-xs text-slate-500">Pilih wilayah domisili kependudukan sesuai e-KTP</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Alamat Lengkap Jalan / No. Rumah (KTP) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.alamatKtp}
-                      onChange={(e) => {
-                        setFormData({ ...formData, alamatKtp: e.target.value });
-                        setErrorFields((prev) => ({ ...prev, alamatKtp: false }));
-                      }}
-                      placeholder="Nama jalan, nomor rumah, blok / gang"
-                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium focus:outline-hidden ${
-                        errorFields.alamatKtp ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        RT / RW <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.rtRwKtp}
-                        onChange={(e) => {
-                          setFormData({ ...formData, rtRwKtp: e.target.value });
-                          setErrorFields((prev) => ({ ...prev, rtRwKtp: false }));
-                        }}
-                        placeholder="Contoh: 003/004"
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden ${
-                          errorFields.rtRwKtp ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                        }`}
-                      />
-                    </div>
-
-                    {/* Dropdown Provinsi */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Provinsi <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.provinsiKtp || ''}
-                        onChange={(e) => {
-                          const newProv = e.target.value;
-                          setFormData({
-                            ...formData,
-                            provinsiKtp: newProv,
-                            kotaKtp: '',
-                            kecamatanKtp: '',
-                            desaKtp: '',
-                            kelurahanKtp: '',
-                            kodePosKtp: '',
-                          });
-                          setErrorFields((prev) => ({ ...prev, provinsiKtp: false }));
-                        }}
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden ${
-                          errorFields.provinsiKtp ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                        }`}
-                      >
-                        <option value="">-- Pilih Provinsi --</option>
-                        {INDONESIA_PROVINCES_DATA.map((prov) => (
-                          <option key={prov.id} value={prov.name}>
-                            {prov.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Kota / Kabupaten */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kota / Kabupaten <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.kotaKtp || ''}
-                        disabled={!formData.provinsiKtp}
-                        onChange={(e) => {
-                          const newCity = e.target.value;
-                          setFormData({
-                            ...formData,
-                            kotaKtp: newCity,
-                            kecamatanKtp: '',
-                            desaKtp: '',
-                            kelurahanKtp: '',
-                            kodePosKtp: '',
-                          });
-                          setErrorFields((prev) => ({ ...prev, kotaKtp: false }));
-                        }}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden disabled:opacity-50"
-                      >
-                        <option value="">-- Pilih Kota / Kab --</option>
-                        {INDONESIA_PROVINCES_DATA.find((p) => p.name === formData.provinsiKtp)?.cities.map((city) => (
-                          <option key={city.name} value={city.name}>
-                            {city.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Kecamatan */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kecamatan <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.kecamatanKtp || ''}
-                        disabled={!formData.kotaKtp}
-                        onChange={(e) => {
-                          const newKec = e.target.value;
-                          const districtObj = INDONESIA_PROVINCES_DATA.find((p) => p.name === formData.provinsiKtp)
-                            ?.cities.find((c) => c.name === formData.kotaKtp)
-                            ?.districts.find((d) => d.name === newKec);
-
-                          setFormData({
-                            ...formData,
-                            kecamatanKtp: newKec,
-                            desaKtp: '',
-                            kelurahanKtp: '',
-                            kodePosKtp: districtObj?.postalCode || formData.kodePosKtp || '',
-                          });
-                          setErrorFields((prev) => ({ ...prev, kecamatanKtp: false }));
-                        }}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden disabled:opacity-50"
-                      >
-                        <option value="">-- Pilih Kecamatan --</option>
-                        {INDONESIA_PROVINCES_DATA.find((p) => p.name === formData.provinsiKtp)
-                          ?.cities.find((c) => c.name === formData.kotaKtp)
-                          ?.districts.map((dist) => (
-                            <option key={dist.name} value={dist.name}>
-                              {dist.name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    {/* Kelurahan / Desa */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kelurahan / Desa <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.kelurahanKtp || formData.desaKtp || ''}
-                        disabled={!formData.kecamatanKtp}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData({
-                            ...formData,
-                            kelurahanKtp: val,
-                            desaKtp: val,
-                          });
-                          setErrorFields((prev) => ({ ...prev, kelurahanKtp: false }));
-                        }}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden disabled:opacity-50"
-                      >
-                        <option value="">-- Pilih Kelurahan / Desa --</option>
-                        {(
-                          INDONESIA_PROVINCES_DATA.find((p) => p.name === formData.provinsiKtp)
-                            ?.cities.find((c) => c.name === formData.kotaKtp)
-                            ?.districts.find((d) => d.name === formData.kecamatanKtp)?.villages || []
-                        ).map((v: string) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Kode Pos */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kode Pos <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.kodePosKtp}
-                        onChange={(e) => {
-                          setFormData({ ...formData, kodePosKtp: e.target.value });
-                          setErrorFields((prev) => ({ ...prev, kodePosKtp: false }));
-                        }}
-                        placeholder="Contoh: 15710"
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:outline-hidden ${
-                          errorFields.kodePosKtp ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </section>
+            {currentStep < 5 && (
+              <button
+                type="button"
+                onClick={handleNextStep}
+                className="px-6 py-2.5 rounded-xl bg-[#005DAA] hover:bg-[#004884] text-white text-xs font-bold shadow-md shadow-blue-600/20 transition flex items-center gap-2 cursor-pointer"
+              >
+                <span>Lanjut ke Langkah {currentStep + 1}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             )}
-
-            {/* ======================================================== */}
-            {/* SECTION 3: ALAMAT PEMASANGAN (KABUPATEN TANGERANG)       */}
-            {/* ======================================================== */}
-            {currentStep === 3 && (
-              <section className="space-y-6 animate-in fade-in">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#005DAA] border border-blue-200">
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h2 className="font-bold text-slate-900 text-base">Section 3: Alamat Lengkap Pemasangan</h2>
-                      <p className="text-xs text-slate-500">Wilayah Layanan Resmi Sambungan Baru Aetra &bull; Kabupaten Tangerang</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Alamat Lengkap Titik Pasang (Nama Jalan, No. Rumah, Blok/Gang) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.alamatPasang}
-                      onChange={(e) => {
-                        setFormData({ ...formData, alamatPasang: e.target.value });
-                        setErrorFields((prev) => ({ ...prev, alamatPasang: false }));
-                      }}
-                      placeholder="Contoh: Jl. Merpati No. 24 RT 003/004, Perum Graha Cikupa"
-                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium focus:outline-hidden ${
-                        errorFields.alamatPasang ? 'border-2 border-red-500 bg-red-50' : 'bg-slate-50 border border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                      }`}
-                    />
-                  </div>
-
-                  {/* Interactive Map Picker */}
-                  <div className="pt-1">
-                    <InteractiveMapPicker
-                      initialLat={formData.dataPasang?.gpsLat || '-6.236600'}
-                      initialLng={formData.dataPasang?.gpsLong || '106.562100'}
-                      onLocationChange={(lat: string, lng: string) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          dataPasang: {
-                            ...prev.dataPasang,
-                            gpsLat: lat,
-                            gpsLong: lng,
-                          },
-                        }));
-                      }}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        RT / RW Pasang <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.rtRwPasang}
-                        onChange={(e) => {
-                          setFormData({ ...formData, rtRwPasang: e.target.value });
-                          setErrorFields((prev) => ({ ...prev, rtRwPasang: false }));
-                        }}
-                        placeholder="003/004"
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden ${
-                          errorFields.rtRwPasang ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                        }`}
-                      />
-                    </div>
-
-                    {/* Filter Kecamatan Kabupaten Tangerang */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kecamatan Pasang <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.kecamatanPasang || ''}
-                        onChange={(e) => {
-                          const newKec = e.target.value;
-                          const found = AETRA_TANGERANG_INSTALLATION_REGIONS.find((k) => k.name === newKec);
-                          setFormData({
-                            ...formData,
-                            kecamatanPasang: newKec,
-                            kelurahanPasang: '',
-                            desaPasang: '',
-                            kodePosPasang: found?.postalCode || formData.kodePosPasang || '',
-                          });
-                          setErrorFields((prev) => ({ ...prev, kecamatanPasang: false }));
-                        }}
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-medium focus:outline-hidden ${
-                          errorFields.kecamatanPasang ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                        }`}
-                      >
-                        <option value="">-- Pilih Kecamatan --</option>
-                        {AETRA_TANGERANG_INSTALLATION_REGIONS.map((k) => (
-                          <option key={`inst-kec-${k.name}`} value={k.name}>
-                            {k.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Kelurahan / Desa Pasang */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kelurahan / Desa <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.kelurahanPasang || formData.desaPasang || ''}
-                        disabled={!formData.kecamatanPasang}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData({
-                            ...formData,
-                            kelurahanPasang: val,
-                            desaPasang: val,
-                          });
-                          setErrorFields((prev) => ({ ...prev, kelurahanPasang: false }));
-                        }}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden disabled:opacity-50"
-                      >
-                        <option value="">-- Pilih Kelurahan / Desa --</option>
-                        {(
-                          AETRA_TANGERANG_INSTALLATION_REGIONS.find((k) => k.name === formData.kecamatanPasang)?.villages || []
-                        ).map((kel: string) => (
-                          <option key={`inst-vil-${kel}`} value={kel}>
-                            {kel}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Kode Pos Pasang */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Kode Pos <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.kodePosPasang}
-                        onChange={(e) => {
-                          setFormData({ ...formData, kodePosPasang: e.target.value });
-                          setErrorFields((prev) => ({ ...prev, kodePosPasang: false }));
-                        }}
-                        placeholder="15520"
-                        className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:outline-hidden ${
-                          errorFields.kodePosPasang ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                        }`}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Status Kepemilikan */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
-                    <label className="block text-xs font-bold text-slate-800">
-                      Status Kepemilikan Properti <span className="text-red-500">*</span>
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {['Milik Sendiri', 'Kontrak / Sewa', 'Dinas', 'Lainnya'].map((opt) => (
-                        <label
-                          key={opt}
-                          onClick={() => {
-                            setFormData({ ...formData, statusKepemilikan: opt });
-                            setErrorFields((prev) => ({ ...prev, statusKepemilikan: false }));
-                          }}
-                          className={`p-3 rounded-xl border text-xs font-bold cursor-pointer transition flex items-center gap-2.5 ${
-                            formData.statusKepemilikan === opt
-                              ? 'bg-blue-50 border-[#005DAA] text-[#005DAA] shadow-xs ring-1 ring-[#005DAA]'
-                              : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="statusKepemilikan"
-                            checked={formData.statusKepemilikan === opt}
-                            onChange={() => {
-                              setFormData({ ...formData, statusKepemilikan: opt });
-                              setErrorFields((prev) => ({ ...prev, statusKepemilikan: false }));
-                            }}
-                            className="text-[#005DAA] focus:ring-[#005DAA]"
-                          />
-                          <span>{opt}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    {/* Manual input if Lainnya is selected */}
-                    {formData.statusKepemilikan === 'Lainnya' && (
-                      <div className="pt-2 animate-in fade-in">
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          Keterangan Status Kepemilikan Properti Lainnya <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.statusKepemilikanLainnya || ''}
-                          onChange={(e) => setFormData({ ...formData, statusKepemilikanLainnya: e.target.value })}
-                          placeholder="Contoh: Rumah Keluarga / Warisan / Hak Guna Bangunan (HGB)..."
-                          className="w-full px-3.5 py-2 bg-white border border-blue-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden shadow-2xs"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* ======================================================== */}
-            {/* SECTION 4: UPLOAD DOKUMEN PERSYARATAN & FOTO PROPERTI    */}
-            {/* ======================================================== */}
-            {currentStep === 4 && (
-              <section className="space-y-6 animate-in fade-in">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#005DAA] border border-blue-200">
-                    <Upload className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 4: Upload Dokumen Persyaratan &amp; Foto Rumah</h2>
-                    <p className="text-xs text-slate-500">Unggah foto dokumen e-KTP, Kartu Keluarga, Bukti PBB, dan Foto Tampak Depan Properti / Titik Meter</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  {/* 1. KTP */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">1. Foto e-KTP Pemohon <span className="text-red-500">*</span></span>
-                      {formData.persyaratanFiles?.ktp && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Check className="w-3 h-3" /> Terlampir
-                        </span>
-                      )}
-                    </div>
-
-                    {formData.persyaratanFiles?.ktp ? (
-                      <div className="relative group border rounded-xl overflow-hidden bg-black/5 aspect-video flex items-center justify-center">
-                        <img
-                          src={formData.persyaratanFiles.ktp.dataUrl}
-                          alt="KTP"
-                          className="max-h-full object-contain"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveDoc('ktp')}
-                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-md cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCameraModalConfig({
-                            isOpen: true,
-                            targetType: 'document',
-                            docKey: 'ktp',
-                            title: 'Ambil Foto KTP via Kamera',
-                            guideType: 'document'
-                          })}
-                          className="w-full py-2 px-3 bg-[#005DAA] hover:bg-[#004A88] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-                        >
-                          <Camera className="w-3.5 h-3.5" />
-                          Ambil via Kamera
-                        </button>
-                        <label className="w-full py-2 px-3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer text-center">
-                          <Upload className="w-3.5 h-3.5" />
-                          Pilih File Foto
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleDocUpload('ktp', e, 'file')}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 2. KK */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">2. Foto Kartu Keluarga (KK)</span>
-                      {formData.persyaratanFiles?.kk && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Check className="w-3 h-3" /> Terlampir
-                        </span>
-                      )}
-                    </div>
-
-                    {formData.persyaratanFiles?.kk ? (
-                      <div className="relative group border rounded-xl overflow-hidden bg-black/5 aspect-video flex items-center justify-center">
-                        <img
-                          src={formData.persyaratanFiles.kk.dataUrl}
-                          alt="KK"
-                          className="max-h-full object-contain"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveDoc('kk')}
-                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-md cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCameraModalConfig({
-                            isOpen: true,
-                            targetType: 'document',
-                            docKey: 'kk',
-                            title: 'Ambil Foto KK via Kamera',
-                            guideType: 'document'
-                          })}
-                          className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 text-[#005DAA] border border-blue-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-                        >
-                          <Camera className="w-3.5 h-3.5" />
-                          Ambil via Kamera
-                        </button>
-                        <label className="w-full py-2 px-3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer text-center">
-                          <Upload className="w-3.5 h-3.5" />
-                          Pilih File Foto
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleDocUpload('kk', e, 'file')}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 3. PBB */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">3. Bukti PBB / Tagihan Listrik</span>
-                      {formData.persyaratanFiles?.pbb && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Check className="w-3 h-3" /> Terlampir
-                        </span>
-                      )}
-                    </div>
-
-                    {formData.persyaratanFiles?.pbb ? (
-                      <div className="relative group border rounded-xl overflow-hidden bg-black/5 aspect-video flex items-center justify-center">
-                        <img
-                          src={formData.persyaratanFiles.pbb.dataUrl}
-                          alt="PBB"
-                          className="max-h-full object-contain"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveDoc('pbb')}
-                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-md cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCameraModalConfig({
-                            isOpen: true,
-                            targetType: 'document',
-                            docKey: 'pbb',
-                            title: 'Ambil Foto PBB via Kamera',
-                            guideType: 'document'
-                          })}
-                          className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 text-[#005DAA] border border-blue-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-                        >
-                          <Camera className="w-3.5 h-3.5" />
-                          Ambil via Kamera
-                        </button>
-                        <label className="w-full py-2 px-3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer text-center">
-                          <Upload className="w-3.5 h-3.5" />
-                          Pilih File Foto
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleDocUpload('pbb', e, 'file')}
-                            className="hidden"
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 4. Foto Properti / Rumah Lapangan & Titik Rencana Meter */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">4. Foto Tampak Depan Rumah &amp; Rencana Titik Meter</span>
-                      {formData.fotoPropertiFiles && formData.fotoPropertiFiles.length > 0 && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Check className="w-3 h-3" /> {formData.fotoPropertiFiles.length} Foto Terlampir
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCameraModalConfig({
-                          isOpen: true,
-                          targetType: 'property',
-                          title: 'Foto Properti & Titik Meter via Kamera',
-                          guideType: 'property'
-                        })}
-                        className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 text-[#005DAA] border border-blue-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                        Ambil via Kamera
-                      </button>
-
-                      <label className="w-full py-2 px-3 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer text-center">
-                        <Upload className="w-3.5 h-3.5" />
-                        Pilih File Foto Rumah
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={(e) => {
-                            const files = e.target.files;
-                            if (!files || files.length === 0) return;
-                            Array.from(files).forEach((file) => {
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                const newPhoto: PropertyPhoto = {
-                                  id: 'photo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-                                  name: file.name,
-                                  dataUrl: reader.result as string,
-                                  source: 'file',
-                                  caption: 'Foto Properti & Titik Sambung',
-                                  timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  fotoPropertiFiles: [...(prev.fotoPropertiFiles || []), newPhoto],
-                                }));
-                              };
-                              reader.readAsDataURL(file);
-                            });
-                            e.target.value = '';
-                          }}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-
-                    {/* Preview list */}
-                    {formData.fotoPropertiFiles && formData.fotoPropertiFiles.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        {formData.fotoPropertiFiles.map((photo, idx) => (
-                          <div key={photo.id || idx} className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-video">
-                            <img
-                              src={photo.dataUrl}
-                              alt={photo.name || `Foto Properti ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  fotoPropertiFiles: (prev.fotoPropertiFiles || []).filter((p) => p.id !== photo.id),
-                                }));
-                              }}
-                              className="absolute top-1 right-1 p-1 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md"
-                              title="Hapus foto"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* ======================================================== */}
-            {/* SECTION 5: KONDISI BANGUNAN, LINGKUNGAN & GOLONGAN TARIF */}
-            {/* ======================================================== */}
-            {currentStep === 5 && (
-              <section className="space-y-6 animate-in fade-in">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#005DAA] border border-blue-200">
-                    <Building2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 5: Kondisi Bangunan &amp; Golongan Tarif</h2>
-                    <p className="text-xs text-slate-500">Penentuan golongan tarif otomatis berdasarkan luas bangunan, jumlah lantai, dan kawasan</p>
-                  </div>
-                </div>
-
-                <div className="space-y-5">
-                  {/* Kategori Utama Peruntukan */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                    <label className="block text-xs font-bold text-slate-800">
-                      Kategori Peruntukan Bangunan <span className="text-red-500">*</span>
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {[
-                        { id: 'rumah_tangga', label: 'Rumah Tangga', icon: Home, desc: 'Tempat tinggal murni' },
-                        { id: 'sosial_instansi', label: 'Sosial / Instansi', icon: Building2, desc: 'Tempat ibadah & sosial' },
-                        { id: 'usaha', label: 'Usaha', icon: Building2, desc: 'Toko, ruko, warung & bisnis' },
-                      ].map((item) => {
-                        const Icon = item.icon;
-                        const isSelected = kategoriFungsi === item.id;
-                        return (
-                          <div
-                            key={item.id}
-                            onClick={() => {
-                              setKategoriFungsi(item.id as KategoriFungsi);
-                              if (item.id === 'rumah_tangga') {
-                                setFormData({ ...formData, fungsiBangunan: 'Rumah Tangga' });
-                              } else if (item.id === 'sosial_instansi') {
-                                setFormData({ ...formData, fungsiBangunan: SOSIAL_INSTANSI_OPTIONS[0] });
-                              } else {
-                                setFormData({ ...formData, fungsiBangunan: 'Usaha' });
-                              }
-                            }}
-                            className={`p-4 rounded-xl border-2 cursor-pointer transition flex items-start gap-3 ${
-                              isSelected
-                                ? 'bg-blue-50/80 border-[#005DAA] shadow-xs'
-                                : 'bg-white border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className={`p-2 rounded-lg ${isSelected ? 'bg-[#005DAA] text-white' : 'bg-slate-100 text-slate-600'}`}>
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <strong className={`block text-xs font-bold ${isSelected ? 'text-[#005DAA]' : 'text-slate-800'}`}>
-                                {item.label}
-                              </strong>
-                              <span className="text-[11px] text-slate-500 block mt-0.5">
-                                {item.desc}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Jika Rumah Tangga: Tampilkan Luas Dasar & Lingkungan */}
-                  {kategoriFungsi === 'rumah_tangga' && (
-                    <div className="space-y-4">
-                      {/* Luas Bangunan & Luas Tanah Dasar */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-sky-200">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-800 mb-1">
-                            Luas Bangunan Dasar (m²) <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="5000"
-                            required
-                            value={formData.luasBangunan}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setFormData((prev) => ({
-                                ...prev,
-                                luasBangunan: val,
-                                totalLuasBangunan: parseFloat(val || '0') * (parseInt(String(prev.kondisiBangunan?.jumlahLantai || '1'), 10) || 1),
-                              }));
-                              setErrorFields((prev) => ({ ...prev, luasBangunan: false }));
-                            }}
-                            placeholder="Contoh: 36, 54, 72"
-                            className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-hidden ${
-                              errorFields.luasBangunan ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                            }`}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-800 mb-1">
-                            Luas Tanah (m²) <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="5000"
-                            required
-                            value={formData.luasTanah}
-                            onChange={(e) => {
-                              setFormData({ ...formData, luasTanah: e.target.value });
-                              setErrorFields((prev) => ({ ...prev, luasTanah: false }));
-                            }}
-                            placeholder="Contoh: 60, 90, 120"
-                            className={`w-full px-3 py-2.5 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-hidden ${
-                              errorFields.luasTanah ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#005DAA]'
-                            }`}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Kondisi Bangunan (Lantai & Penghuni) & Lingkungan */}
-                      <BuildingEnvironmentFields
-                        formData={formData}
-                        setFormData={setFormData}
-                        errorFields={errorFields}
-                      />
-                    </div>
-                  )}
-
-                  {/* Hasil Penentuan Golongan Tarif */}
-                  <DomesticTariffResultCard
-                    totalLuas={parseFloat(String(formData.totalLuasBangunan || formData.luasBangunan || '0'))}
-                    isRealEstate={formData.lingkungan?.realEstate === 'Ya'}
-                    hasUsaha={Boolean(formData.hasUsahaKomersil)}
-                    luasBangunan={formData.luasBangunan || '0'}
-                    jumlahLantai={formData.kondisiBangunan?.jumlahLantai || '1'}
-                  />
-                </div>
-              </section>
-            )}
-
-            {/* ======================================================== */}
-            {/* SECTION 6: PETUGAS LAPANGAN & PERSETUJUAN                */}
-            {/* ======================================================== */}
-            {currentStep === 6 && (
-              <section className="space-y-6 animate-in fade-in">
-                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#005DAA] border border-blue-200">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-slate-900 text-base">Section 6: Petugas Lapangan &amp; Persetujuan</h2>
-                    <p className="text-xs text-slate-500">Administrasi teknis, verifikasi jalur distribusi, spesifikasi pipa dinas, dan persetujuan berlangganan</p>
-                  </div>
-                </div>
-
-                {/* Kolom Petugas Lapangan (Bersih, Terstruktur, Tanpa Foto Properti) */}
-                <PetugasOfficerFields
-                  formData={formData}
-                  setFormData={setFormData}
-                  errorFields={errorFields}
-                />
-
-                {/* Checkbox Pernyataan Persetujuan Berlangganan */}
-                <div className="pt-2">
-                  <label className={`flex items-start gap-3 p-4 rounded-xl cursor-pointer transition ${
-                    formData.persetujuan ? 'bg-blue-50/70 border border-blue-200' : 'bg-slate-100/70 hover:bg-slate-100 border border-transparent'
-                  } ${errorFields.persetujuan ? 'border-2 border-red-500 bg-red-50' : ''}`}>
-                    <input
-                      type="checkbox"
-                      required
-                      checked={Boolean(formData.persetujuan)}
-                      onChange={(e) => {
-                        setFormData({ ...formData, persetujuan: e.target.checked });
-                        if (e.target.checked) {
-                          setErrorFields((prev) => ({ ...prev, persetujuan: false }));
-                        }
-                      }}
-                      className="mt-0.5 rounded text-[#005DAA] focus:ring-[#005DAA] w-4 h-4 cursor-pointer shrink-0"
-                    />
-                    <span className="text-xs text-slate-800 leading-relaxed">
-                      "Dengan menandatangani/mengirim formulir ini, Pelanggan menyatakan setuju dan tunduk kepada Syarat dan Ketentuan Berlangganan yang berlaku dan merupakan hubungan kepelangganan yang sah menurut hukum dengan <strong>PT Aetra Air Tangerang</strong>." <span className="text-red-500">*</span>
-                    </span>
-                  </label>
-                </div>
-              </section>
-            )}
-
-            {/* ======================================================== */}
-            {/* BOTTOM NAVIGATION ACTIONS                                */}
-            {/* ======================================================== */}
-            <div className="pt-6 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                {currentStep > 1 && (
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs transition cursor-pointer"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>Sebelumnya</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 text-xs font-semibold transition cursor-pointer"
-                >
-                  Kosongkan Form
-                </button>
-
-                {currentStep < 6 ? (
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#005DAA] hover:bg-[#004A88] text-white text-xs font-bold shadow-md shadow-blue-600/20 transition transform active:scale-98 cursor-pointer"
-                  >
-                    <span>Selanjutnya</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={!isAllRequiredFieldsFilled}
-                    className={`inline-flex items-center gap-2 px-7 py-3 rounded-xl text-xs font-black transition transform shadow-lg cursor-pointer ${
-                      isAllRequiredFieldsFilled
-                        ? 'bg-[#005DAA] hover:bg-[#004A88] text-white shadow-blue-600/30 active:scale-98'
-                        : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none opacity-70'
-                    }`}
-                    title={
-                      isAllRequiredFieldsFilled
-                        ? 'Klik untuk mendaftarkan sambungan baru'
-                        : 'Semua isian bertanda bintang (*) wajib dilengkapi terlebih dahulu'
-                    }
-                  >
-                    <CheckCheck className="w-4 h-4 text-emerald-300" />
-                    <span>Daftarkan Sambungan Baru</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </form>
+          </div>
         </div>
-      )}
+      </div>
 
-      {/* Auto Camera Device Modal */}
+      {/* Modal Syarat & Ketentuan (Opens at Final Step upon clicking Daftar Sambungan Baru) */}
+      <TermsAndConditionsModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
+        onAccept={handleAcceptTermsAndSubmit}
+      />
+
+      {/* Camera Capture Modal */}
       <CameraCaptureModal
-        isOpen={cameraModalConfig.isOpen}
-        onClose={() => setCameraModalConfig((prev) => ({ ...prev, isOpen: false }))}
-        onCapture={handleDirectCameraCapture}
-        title={cameraModalConfig.title}
-        guideType={cameraModalConfig.guideType === 'property' ? 'property' : 'document'}
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        title={cameraConfig.title}
+        guideType={cameraConfig.targetDocKey === 'payment' ? 'payment' : 'document'}
+        onCapture={(dataUrl, fileName) => {
+          if (cameraConfig.targetDocKey === 'payment') {
+            setPaymentProofData((prev) => ({
+              ...prev,
+              dataUrl,
+              uploadedAt: new Date().toISOString(),
+            }));
+          } else if (cameraConfig.targetDocKey) {
+            const key = cameraConfig.targetDocKey as 'ktp' | 'kk' | 'pbb' | 'suratDomisili' | 'suratKuasaSewa' | 'lainnya';
+            const uploadedDoc: UploadedDoc = {
+              id: 'doc-' + Date.now(),
+              name: fileName || `Foto_${key.toUpperCase()}.jpg`,
+              dataUrl,
+              source: 'camera',
+              type: 'image/jpeg',
+              uploadedAt: new Date().toISOString(),
+            };
+            setFormData((prev) => ({
+              ...prev,
+              persyaratan: { ...prev.persyaratan, [key]: true },
+              persyaratanFiles: { ...prev.persyaratanFiles, [key]: uploadedDoc },
+            }));
+          }
+          setIsCameraOpen(false);
+        }}
+      />
+
+      {/* Lightbox Viewer */}
+      <DocumentImageViewerModal
+        isOpen={activeViewer.isOpen}
+        onClose={() => setActiveViewer((prev) => ({ ...prev, isOpen: false }))}
+        imageUrl={activeViewer.imageUrl}
+        title={activeViewer.title}
+        description={activeViewer.description}
       />
     </div>
   );
