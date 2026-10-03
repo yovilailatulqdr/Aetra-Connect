@@ -632,21 +632,6 @@ export default function App() {
             noSegel: data.nomorSegel || reg.dataPasang?.noSegel || '',
           },
         };
-        if (data.idPelanggan && currentUser) {
-          const matchingReg = registrations.find((r) => r.noForm === noForm);
-          if (
-            currentUser.role === 'customer' ||
-            (matchingReg && currentUser.email && matchingReg.email?.toLowerCase() === currentUser.email?.toLowerCase()) ||
-            (matchingReg && currentUser.nama && matchingReg.namaKtp?.toLowerCase() === currentUser.nama?.toLowerCase())
-          ) {
-            const updatedUser: UserAccount = { ...currentUser, idPelanggan: data.idPelanggan };
-            setCurrentUser(updatedUser);
-            localStorage.setItem('aetra_current_user', JSON.stringify(updatedUser));
-          }
-        }
-        window.dispatchEvent(new CustomEvent('aetra_sync_event', { detail: { noForm, idPelanggan: data.idPelanggan } }));
-        window.dispatchEvent(new Event('storage'));
-
         cloudSyncService.saveRegistration(updatedReg);
         return updatedReg;
       })
@@ -744,7 +729,7 @@ export default function App() {
       })
     );
 
-    // Persist to local storage and sync currentUser
+    // Persist to local storage
     try {
       const saved = localStorage.getItem('aetra_registrations');
       if (saved) {
@@ -753,7 +738,6 @@ export default function App() {
           r.noForm === noForm
             ? {
                 ...r,
-                idPelanggan: finalIdPelanggan,
                 statusPendaftaran: 'WAITING_PAYMENT' as const,
                 status_pendaftaran: 'WAITING_PAYMENT' as const,
                 nomorPembayaran,
@@ -765,23 +749,6 @@ export default function App() {
         );
         localStorage.setItem('aetra_registrations', JSON.stringify(updatedList));
       }
-
-      // Sync customer user profile immediately (Requirement 1 & 8)
-      if (currentUser) {
-        const matchingReg = registrations.find((r) => r.noForm === noForm);
-        if (
-          currentUser.role === 'customer' ||
-          (matchingReg && currentUser.email && matchingReg.email?.toLowerCase() === currentUser.email?.toLowerCase()) ||
-          (matchingReg && currentUser.nama && matchingReg.namaKtp?.toLowerCase() === currentUser.nama?.toLowerCase())
-        ) {
-          const updatedUser: UserAccount = { ...currentUser, idPelanggan: finalIdPelanggan };
-          setCurrentUser(updatedUser);
-          localStorage.setItem('aetra_current_user', JSON.stringify(updatedUser));
-        }
-      }
-
-      window.dispatchEvent(new CustomEvent('aetra_sync_event', { detail: { noForm, idPelanggan: finalIdPelanggan } }));
-      window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.warn(e);
     }
@@ -1142,10 +1109,15 @@ export default function App() {
           {activeTab === 'registration' && (
             <RegistrationForm
               onRegisterSuccess={handleRegisterSuccess}
-              onNavigateToTracking={handleNavigateToTracking}
+              onNavigateTracking={handleNavigateToTracking}
               currentUser={currentUser}
               existingRegistrations={registrations}
               onViewReceipt={(record) => setReceiptData(record)}
+              onUpdateRegistration={(updatedReg) => {
+                setRegistrations((prev) =>
+                  prev.map((r) => (r.noForm === updatedReg.noForm ? updatedReg : r))
+                );
+              }}
             />
           )}
 

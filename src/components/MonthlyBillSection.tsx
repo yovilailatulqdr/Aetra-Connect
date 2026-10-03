@@ -603,121 +603,71 @@ export const MonthlyBillSection: React.FC<MonthlyBillSectionProps> = ({
                 </div>
               </div>
 
-              {/* HISTORI STAND METER 12 BULAN TERAKHIR & GRAFIK TREND (REQUIREMENT 14 & 5) */}
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#005DAA] flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-slate-900 uppercase tracking-wide">
-                        Histori Stand Meter &amp; Grafik Tren Pemakaian Air
-                      </h4>
-                      <p className="text-xs text-slate-500">
-                        Rekaman pembacaan meter dan volume konsumsi 12 bulan terakhir (1 Tahun)
-                      </p>
-                    </div>
+              {/* HISTORI STAND METER 12 BULAN TERAKHIR & GRAFIK TREND (REQUIREMENT 14) */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-[#005DAA]" />
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wide">
+                      Histori Stand Meter &amp; Trend Pemakaian (1 Tahun Terakhir)
+                    </h4>
                   </div>
-                  <span className="px-3 py-1 rounded-full bg-blue-50 text-[#005DAA] text-xs font-mono font-bold self-start sm:self-auto border border-blue-200">
-                    Rata-rata: 16.8 m³ / bln
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    12 Bulan Terakhir
                   </span>
                 </div>
 
-                {/* VISUAL SVG & BAR TREND CHART */}
-                <div className="p-5 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-900 to-[#0c1830] text-white space-y-4 shadow-inner">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-300 flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-cyan-400" />
-                      <span>Grafik Tren Konsumsi Air Bulanan (m³ / Bulan):</span>
-                    </span>
-                    <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-xs bg-cyan-400 inline-block" />
-                        <span>Pemakaian Air</span>
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-3 h-0.5 bg-amber-400 inline-block" />
-                        <span>Garis Tren</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* High-Fidelity Chart Canvas */}
-                  <div className="pt-6 pb-2">
-                    <div className="h-44 w-full flex items-end justify-between gap-2 px-1 relative">
-                      {/* Dotted Average Reference Line */}
-                      <div className="absolute left-0 right-0 top-[35%] border-b border-dashed border-amber-400/40 pointer-events-none flex items-center justify-end pr-2">
-                        <span className="text-[9px] font-mono text-amber-300/80 bg-slate-950/80 px-1.5 py-0.5 rounded-sm">
-                          Rata-rata 16.8 m³
-                        </span>
-                      </div>
-
-                      {standMeterHistory.slice().reverse().map((item, idx) => {
-                        const maxUsage = 24;
-                        const pct = Math.max(15, Math.min(100, Math.round((item.pemakaian / maxUsage) * 100)));
-                        const isCurrentMonth = idx === standMeterHistory.length - 1;
-
-                        return (
-                          <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 group relative z-10">
-                            {/* Value Badge above bar */}
-                            <span className={`text-[10px] font-mono font-black transition duration-200 ${
-                              isCurrentMonth
-                                ? 'text-amber-400'
-                                : 'text-cyan-300'
-                            }`}>
-                              {item.pemakaian}
-                            </span>
-
-                            {/* Gradient Bar */}
-                            <div className="w-full max-w-[36px] bg-slate-800 rounded-t-lg overflow-hidden h-32 flex items-end">
-                              <div
-                                style={{ height: `${pct}%` }}
-                                className={`w-full rounded-t-lg transition-all duration-500 shadow-md ${
-                                  isCurrentMonth
-                                    ? 'bg-gradient-to-t from-amber-600 to-amber-400 shadow-amber-500/20'
-                                    : 'bg-gradient-to-t from-blue-600 via-cyan-500 to-cyan-400 group-hover:from-[#F37021] group-hover:to-amber-400'
-                                }`}
-                                title={`${item.bulan}: ${item.pemakaian} m³ | Stand: ${item.standLalu} - ${item.standKini}`}
-                              />
-                            </div>
-
-                            {/* Month Label */}
-                            <span className={`text-[10px] font-bold truncate text-center ${
-                              isCurrentMonth ? 'text-amber-400' : 'text-slate-400 group-hover:text-slate-200'
-                            }`}>
-                              {item.bulan.split(' ')[0].slice(0, 3)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                {/* Visual SVG Trend Graph */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-700 block">
+                    Grafik Trend Konsumsi Air Bulanan (m³):
+                  </span>
+                  <div className="h-36 w-full flex items-end justify-between gap-1.5 pt-6 pb-2 px-2">
+                    {standMeterHistory.slice().reverse().map((item, idx) => {
+                      const maxUsage = 25;
+                      const barHeight = Math.round((item.pemakaian / maxUsage) * 100);
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
+                          <span className="text-[9px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition">
+                            {item.pemakaian}m³
+                          </span>
+                          <div
+                            style={{ height: `${barHeight}%` }}
+                            className="w-full bg-[#005DAA] hover:bg-[#F37021] rounded-t-md transition-all duration-300"
+                            title={`${item.bulan}: ${item.pemakaian} m³ (Rp ${item.tagihan.toLocaleString('id-ID')})`}
+                          />
+                          <span className="text-[8px] sm:text-[9px] text-slate-400 truncate w-full text-center">
+                            {item.bulan.split(' ')[0].slice(0, 3)}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Stand Meter Table */}
-                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 uppercase text-[10px] tracking-wider">
-                        <th className="py-3 px-4 font-bold">Periode Bulan</th>
-                        <th className="py-3 px-4 font-bold font-mono">Stand Lalu</th>
-                        <th className="py-3 px-4 font-bold font-mono">Stand Kini</th>
-                        <th className="py-3 px-4 font-bold font-mono text-[#005DAA]">Volume (m³)</th>
-                        <th className="py-3 px-4 font-bold font-mono">Total Tagihan</th>
-                        <th className="py-3 px-4 font-bold text-center">Status</th>
+                      <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                        <th className="py-2.5 px-3 font-bold">Periode Bulan</th>
+                        <th className="py-2.5 px-3 font-bold font-mono">Stand Lalu</th>
+                        <th className="py-2.5 px-3 font-bold font-mono">Stand Kini</th>
+                        <th className="py-2.5 px-3 font-bold font-mono">Volume (m³)</th>
+                        <th className="py-2.5 px-3 font-bold font-mono">Total Tagihan</th>
+                        <th className="py-2.5 px-3 font-bold text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {standMeterHistory.map((row, i) => (
-                        <tr key={i} className="hover:bg-blue-50/40 transition">
-                          <td className="py-2.5 px-4 font-bold text-slate-800">{row.bulan}</td>
-                          <td className="py-2.5 px-4 font-mono text-slate-600">{row.standLalu}</td>
-                          <td className="py-2.5 px-4 font-mono text-slate-600">{row.standKini}</td>
-                          <td className="py-2.5 px-4 font-mono font-black text-[#005DAA]">{row.pemakaian} m³</td>
-                          <td className="py-2.5 px-4 font-mono font-bold text-slate-900">Rp {row.tagihan.toLocaleString('id-ID')}</td>
-                          <td className="py-2.5 px-4 text-center">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        <tr key={i} className="hover:bg-slate-50 transition">
+                          <td className="py-2 px-3 font-semibold text-slate-800">{row.bulan}</td>
+                          <td className="py-2 px-3 font-mono text-slate-600">{row.standLalu}</td>
+                          <td className="py-2 px-3 font-mono text-slate-600">{row.standKini}</td>
+                          <td className="py-2 px-3 font-mono font-bold text-[#005DAA]">{row.pemakaian} m³</td>
+                          <td className="py-2 px-3 font-mono font-bold text-slate-900">Rp {row.tagihan.toLocaleString('id-ID')}</td>
+                          <td className="py-2 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               row.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                             }`}>
                               {row.status}

@@ -490,51 +490,51 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
   };
 
   return (
-    <div className="space-y-6 bg-[#0B132B] -m-4 sm:-m-6 p-4 sm:p-6 rounded-3xl min-h-screen text-slate-100">
+    <div className="space-y-6">
       {/* Top Admin Banner */}
-      <div className="bg-gradient-to-r from-slate-950 via-[#0a192f] to-[#112240] text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-700/80 flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1.5">
+      <div className="bg-linear-to-r from-slate-900 via-blue-950 to-[#003868] text-white rounded-2xl p-6 shadow-sm border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-md">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#F37021] text-white flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5" />
-              EXECUTIVE BACKOFFICE &amp; OPERASIONAL AETRA
+              BACKOFFICE &amp; OPERASIONAL
             </span>
-            <span className="text-xs font-mono text-cyan-300">PT Aetra Air Tangerang</span>
+            <span className="text-xs text-blue-200">PT Aetra Air Tangerang</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            Pusat Komando &amp; Pengendalian Sambungan Baru
+          <h2 className="text-xl font-black tracking-tight text-white">
+            Portal Administrasi &amp; Pengendalian Sambungan Baru
           </h2>
           <p className="text-xs text-slate-300 max-w-2xl">
-            Verifikasi berkas pendaftaran baru, pantau pelunasan kasir, terbitkan ID Pelanggan tetap, dan kendalikan data tagihan rekening air.
+            Kelola verifikasi berkas permohonan, pantau pelunasan biaya pasang, terbitkan Surat Perintah Kerja (SPK), dan perbarui status teknis lapangan.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900/90 backdrop-blur-md text-cyan-300 text-xs font-bold border border-cyan-500/30 shadow-lg">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-            <span>Mode Administrator Aktif</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 backdrop-blur-xs text-blue-100 text-xs font-semibold border border-white/15">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Sistem Terhubung Real-Time</span>
           </div>
         </div>
       </div>
 
-      {/* Tab Switcher: Dark Executive Tabs */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#111C3A] rounded-2xl border border-slate-700 w-fit flex-wrap shadow-lg">
+      {/* Tab Switcher: Data Registrasi Baru vs Data Survey Pelanggan */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/90 w-fit flex-wrap">
         <button
           type="button"
           onClick={() => setAdminSubTab('registrations')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
             adminSubTab === 'registrations'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              ? 'bg-[#005DAA] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>Data Registrasi Sambungan Baru</span>
+          <span>Data Pelanggan Registrasi Baru</span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
               adminSubTab === 'registrations'
                 ? 'bg-white/20 text-white'
-                : 'bg-slate-800 text-slate-300'
+                : 'bg-slate-200 text-slate-700'
             }`}
           >
             {combinedList.length}
@@ -546,17 +546,17 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
           onClick={() => setAdminSubTab('bills')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
             adminSubTab === 'bills'
-              ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              ? 'bg-[#005DAA] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           }`}
         >
-          <CreditCard className="w-4 h-4 text-amber-400" />
-          <span>Data Tagihan Rekening Air</span>
+          <CreditCard className="w-4 h-4 text-amber-300" />
+          <span>Data Tagihan Pelanggan (Manual &amp; Impor Excel)</span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
               adminSubTab === 'bills'
-                ? 'bg-slate-950/30 text-slate-950'
-                : 'bg-slate-800 text-slate-300'
+                ? 'bg-white/20 text-white'
+                : 'bg-slate-200 text-slate-700'
             }`}
           >
             {billsState.length}
@@ -568,17 +568,17 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
           onClick={() => setAdminSubTab('surveys')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
             adminSubTab === 'surveys'
-              ? 'bg-emerald-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              ? 'bg-[#005DAA] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
           }`}
         >
           <MessageSquareHeart className="w-4 h-4 text-emerald-300" />
-          <span>Survey Kepuasan Pelanggan</span>
+          <span>Data Survey Kepuasan Pelanggan</span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
               adminSubTab === 'surveys'
                 ? 'bg-white/20 text-white'
-                : 'bg-slate-800 text-slate-300'
+                : 'bg-slate-200 text-slate-700'
             }`}
           >
             {surveyList.length}
@@ -590,89 +590,89 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
         <>
           {/* KPI Cards Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {/* Total Pengajuan */}
-            <div className="bg-[#111C3A] p-4 rounded-2xl border border-slate-700/80 text-white shadow-md space-y-1">
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs font-bold">Total Pengajuan</span>
-                <Users className="w-4 h-4 text-blue-400" />
-              </div>
-              <div className="text-2xl font-black text-white">{stats.total}</div>
-              <div className="text-[10px] text-slate-400">Permohonan masuk</div>
-            </div>
+        {/* Total Pengajuan */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold">Total Pengajuan</span>
+            <Users className="w-4 h-4 text-[#005DAA]" />
+          </div>
+          <div className="text-xl font-black text-slate-900">{stats.total}</div>
+          <div className="text-[10px] text-slate-500">Permohonan terdaftar</div>
+        </div>
 
-            {/* Tahap 1: Verifikasi Berkas */}
-            <div className="bg-[#111C3A] p-4 rounded-2xl border border-slate-700/80 text-white shadow-md space-y-1">
-              <div className="flex items-center justify-between text-amber-400">
-                <span className="text-xs font-bold">1. Berkas</span>
-                <Clock className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="text-2xl font-black text-amber-400">{stats.step1}</div>
-              <div className="text-[10px] text-slate-400">Verifikasi dokumen</div>
-            </div>
+        {/* Tahap 1: Verifikasi Berkas */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold">1. Berkas</span>
+            <Clock className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-xl font-black text-amber-600">{stats.step1}</div>
+          <div className="text-[10px] text-slate-500">Verifikasi dokumen</div>
+        </div>
 
-            {/* Tahap 2: Pembayaran */}
-            <div className="bg-[#111C3A] p-4 rounded-2xl border border-slate-700/80 text-white shadow-md space-y-1">
-              <div className="flex items-center justify-between text-cyan-400">
-                <span className="text-xs font-bold">2. Pembayaran</span>
-                <CreditCard className="w-4 h-4 text-cyan-400" />
-              </div>
-              <div className="text-2xl font-black text-cyan-400">{stats.step2}</div>
-              <div className="text-[10px] text-slate-400">Menunggu / konfirmasi</div>
-            </div>
+        {/* Tahap 2: Pembayaran */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold">2. Pembayaran</span>
+            <CreditCard className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="text-xl font-black text-[#005DAA]">{stats.step2}</div>
+          <div className="text-[10px] text-slate-500">Menunggu / konfirmasi</div>
+        </div>
 
-            {/* Tahap 3: SPKO Pipa Dinas */}
-            <div className="bg-[#111C3A] p-4 rounded-2xl border border-slate-700/80 text-white shadow-md space-y-1">
-              <div className="flex items-center justify-between text-orange-400">
-                <span className="text-xs font-bold">3. SPKO &amp; Pipa</span>
-                <Wrench className="w-4 h-4 text-orange-400" />
-              </div>
-              <div className="text-2xl font-black text-orange-400">{stats.step3}</div>
-              <div className="text-[10px] text-slate-400">Pekerjaan pipa dinas</div>
-            </div>
+        {/* Tahap 3: SPKO Pipa Dinas */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold">3. SPKO &amp; Pipa</span>
+            <Wrench className="w-4 h-4 text-[#F37021]" />
+          </div>
+          <div className="text-xl font-black text-[#F37021]">{stats.step3}</div>
+          <div className="text-[10px] text-slate-500">Pekerjaan pipa dinas</div>
+        </div>
 
-            {/* Tahap 4: Pasang Meter & Segel */}
-            <div className="bg-[#111C3A] p-4 rounded-2xl border border-slate-700/80 text-white shadow-md space-y-1">
-              <div className="flex items-center justify-between text-indigo-400">
-                <span className="text-xs font-bold">4. Pasang Meter</span>
-                <Gauge className="w-4 h-4 text-indigo-400" />
-              </div>
-              <div className="text-2xl font-black text-indigo-400">{stats.step4}</div>
-              <div className="text-[10px] text-slate-400">Water meter &amp; segel</div>
-            </div>
+        {/* Tahap 4: Pasang Meter & Segel */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold">4. Pasang Meter</span>
+            <Gauge className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="text-xl font-black text-indigo-600">{stats.step4}</div>
+          <div className="text-[10px] text-slate-500">Water meter &amp; segel</div>
+        </div>
 
-            {/* Tahap 5: Selesai (Air Mengalir) */}
-            <div className="bg-[#111C3A] p-4 rounded-2xl border border-slate-700/80 text-white shadow-md space-y-1">
-              <div className="flex items-center justify-between text-emerald-400">
-                <span className="text-xs font-bold">5. Air Mengalir</span>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        {/* Tahap 5: Selesai (Air Mengalir) */}
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-semibold">5. Air Mengalir</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-xl font-black text-emerald-600">{stats.step5}</div>
+          <div className="text-[10px] text-slate-500">Sambungan aktif resmi</div>
+        </div>
+      </div>
+
+      {/* Main Admin Content Card: Data Pelanggan */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        {/* Table Top Header & Excel Action Bar */}
+        <div className="border-b border-slate-200 px-5 sm:px-6 py-4 flex items-center justify-between gap-4 flex-wrap bg-slate-50/70">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#005DAA] shadow-2xs">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Data Pelanggan Sambungan Baru
+                </h3>
+                <span className="text-[11px] font-bold bg-[#005DAA] text-white px-2.5 py-0.5 rounded-full">
+                  {combinedList.length} Pemohon
+                </span>
               </div>
-              <div className="text-2xl font-black text-emerald-400">{stats.step5}</div>
-              <div className="text-[10px] text-slate-400">Sambungan aktif resmi</div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Total Akumulasi Biaya Pasang: <span className="font-bold text-slate-900">Rp {stats.totalRevenue.toLocaleString('id-ID')}</span>
+              </p>
             </div>
           </div>
-
-          {/* Main Admin Content Card: Data Pelanggan */}
-          <div className="bg-[#111C3A] rounded-3xl border border-slate-700 shadow-2xl overflow-hidden">
-            {/* Table Top Header & Excel Action Bar */}
-            <div className="border-b border-slate-700/80 px-6 py-5 flex items-center justify-between gap-4 flex-wrap bg-[#091124]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shadow-lg">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-white">
-                      Data Pelanggan Sambungan Baru
-                    </h3>
-                    <span className="text-[11px] font-black bg-blue-600 text-white px-3 py-0.5 rounded-full shadow-sm">
-                      {combinedList.length} Pemohon
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Total Akumulasi Biaya Pasang: <strong className="text-amber-300 font-mono">Rp {stats.totalRevenue.toLocaleString('id-ID')}</strong>
-                  </p>
-                </div>
-              </div>
 
           {/* Excel Export / Import & Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -1813,10 +1813,10 @@ export const AdminSection: React.FC<AdminSectionProps> = ({
                     setViewingFullRecord(null);
                     handleOpenEditModal(item);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs transition"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#005DAA] hover:bg-[#004B8A] text-white font-bold text-xs shadow-xs transition"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>Ubah Data</span>
+                  <span>Ubah Status</span>
                 </button>
 
                 {onViewReceipt && (

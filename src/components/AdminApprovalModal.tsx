@@ -12,13 +12,14 @@ import {
   MapPin, 
   Calendar, 
   AlertCircle,
-  FileText,
-  Image as ImageIcon,
-  Eye,
-  CheckCheck,
-  ReceiptText,
   Sparkles,
-  X
+  RefreshCw,
+  X,
+  Eye,
+  FileText,
+  Camera,
+  Image as ImageIcon,
+  Receipt
 } from 'lucide-react';
 import { DocumentImageViewerModal } from './DocumentImageViewerModal';
 
@@ -62,10 +63,10 @@ export const AdminApprovalModal: React.FC<AdminApprovalModalProps> = ({
   const [adminNotes, setAdminNotes] = useState<string>(
     isPaymentVerificationStage 
       ? 'Pembayaran biaya sambungan baru telah diverifikasi lunas oleh Kasir & Petugas Keuangan. ID Pelanggan diterbitkan.'
-      : 'Berkas identitas pemohon dan persyaratan administrasi telah diverifikasi dan disetujui oleh Petugas Administrasi.'
+      : 'Berkas identitas pemohon dan survei kelayakan teknis jaringan telah diverifikasi dan disetujui oleh Petugas Administrasi.'
   );
   const [isRejecting, setIsRejecting] = useState<boolean>(false);
-  const [rejectReason, setRejectReason] = useState<string>('Kelengkapan berkas KTP / PBB tidak sesuai dengan alamat persil pemasangan.');
+  const [rejectReason, setRejectReason] = useState<string>('Kelengkapan berkas KTP/PBB tidak sesuai dengan alamat persil pemasangan.');
   const [copied, setCopied] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<boolean>(false);
 
@@ -129,346 +130,434 @@ export const AdminApprovalModal: React.FC<AdminApprovalModalProps> = ({
   const uploadedDocs = [
     { key: 'ktp', label: 'Foto e-KTP Pemohon', doc: record.persyaratanFiles?.ktp },
     { key: 'kk', label: 'Foto Kartu Keluarga (KK)', doc: record.persyaratanFiles?.kk },
-    { key: 'pbb', label: 'Pajak Bumi dan Bangunan (PBB)', doc: record.persyaratanFiles?.pbb },
-    { key: 'suratDomisili', label: 'Surat Keterangan Domisili', doc: record.persyaratanFiles?.suratDomisili },
-    { key: 'suratKuasaSewa', label: 'Surat Kuasa / Perjanjian Sewa', doc: record.persyaratanFiles?.suratKuasaSewa },
-    { key: 'lainnya', label: 'Dokumen Pendukung Lainnya', doc: record.persyaratanFiles?.lainnya },
+    { key: 'pbb', label: 'Bukti Lunas PBB / Rekening Listrik', doc: record.persyaratanFiles?.pbb },
+    { key: 'suratDomisili', label: 'Surat Domisili', doc: record.persyaratanFiles?.suratDomisili },
+    { key: 'suratKuasaSewa', label: 'Surat Kuasa Sewa', doc: record.persyaratanFiles?.suratKuasaSewa },
+    { key: 'lainnya', label: 'Dokumen Lainnya', doc: record.persyaratanFiles?.lainnya },
   ].filter((d) => Boolean(d.doc?.dataUrl));
 
-  const paymentProofDoc = record.paymentProof?.dataUrl ? record.paymentProof : null;
+  const propertyPhotos = record.fotoPropertiFiles || [];
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-[#0e172e] border border-slate-700 text-white rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-200">
-        
-        {/* Header Bar */}
-        <div className={`p-6 border-b border-slate-800 flex items-center justify-between gap-4 ${
-          isPaymentVerificationStage
-            ? 'bg-linear-to-r from-[#0d2a4a] to-[#0a382b]'
-            : 'bg-linear-to-r from-slate-900 to-[#102446]'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg ${
-              isPaymentVerificationStage
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-            }`}>
-              {isPaymentVerificationStage ? <CheckCheck className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
+    <>
+      <div
+        className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden border border-slate-700 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200 my-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className={`p-5 text-white flex items-start justify-between gap-3 border-b-4 ${
+            isRejecting
+              ? 'bg-gradient-to-r from-rose-900 via-red-800 to-slate-950 border-rose-500'
+              : isPaymentVerificationStage
+              ? 'bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-indigo-500'
+              : 'bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 border-[#005DAA]'
+          }`}>
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/20">
+                {isRejecting ? (
+                  <XCircle className="w-6 h-6 text-red-300" />
+                ) : isPaymentVerificationStage ? (
+                  <Receipt className="w-6 h-6 text-emerald-300" />
+                ) : (
+                  <ShieldCheck className="w-6 h-6 text-blue-300" />
+                )}
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full text-white">
+                  {isRejecting 
+                    ? 'Tolak / Revisi Berkas' 
+                    : isPaymentVerificationStage 
+                    ? 'Tahap 2: Verifikasi Pembayaran & Input ID Pelanggan' 
+                    : 'Tahap 1: Verifikasi Berkas & Terbitkan No. Bayar'}
+                </span>
+                <h3 className="text-base sm:text-lg font-black tracking-tight mt-1">
+                  {isRejecting 
+                    ? 'Tolak / Batalkan Permohonan Sambungan' 
+                    : isPaymentVerificationStage 
+                    ? 'Verifikasi Bukti Transfer & Aktivasi ID Pelanggan' 
+                    : 'Persetujuan Berkas & Penerbitan Nomor Pembayaran'}
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5 font-mono">
+                  No. Form: #{record.noForm} &bull; No. SR: {record.noSr || '-'} &bull; {record.namaKtp}
+                </p>
+              </div>
             </div>
-            <div>
-              <span className={`text-[11px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                isPaymentVerificationStage
-                  ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30'
-                  : 'bg-blue-400/20 text-blue-300 border border-blue-400/30'
-              }`}>
-                {isPaymentVerificationStage ? 'TAHAP 2: VERIFIKASI PEMBAYARAN & TERBIT ID' : 'TAHAP 1: VERIFIKASI BERKAS & TERBIT NO. BAYAR'}
-              </span>
-              <h3 className="text-lg font-black text-white mt-0.5">
-                {isPaymentVerificationStage
-                  ? 'Konfirmasi Pelunasan & Penerbitan ID Pelanggan'
-                  : 'Pemeriksaan Berkas & Penerbitan Nomor Pembayaran'}
-              </h3>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition shrink-0 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          {/* Body Content */}
+          <div className="p-6 overflow-y-auto space-y-6 text-xs bg-slate-50/60 flex-1">
+            
+            {/* Summary Pelanggan Card */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Nama Pemohon (KTP)</span>
+                  <strong className="text-slate-900 text-sm block">{record.namaKtp}</strong>
+                  <span className="text-[11px] text-slate-600 block">NIK: {record.noKtp} &bull; WA: <span className="font-semibold text-emerald-700">{record.telpHp}</span></span>
+                </div>
 
-        {/* Modal Body */}
-        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
-          {/* Customer Summary Card */}
-          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div>
-              <span className="text-slate-400 block text-[11px]">Nama Pemohon:</span>
-              <strong className="text-white uppercase font-bold text-sm">{record.namaKtp}</strong>
-              <span className="text-slate-400 block text-[10px] font-mono">NIK: {record.noKtp}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[11px]">No. Formulir / SR:</span>
-              <strong className="text-amber-400 font-mono text-sm">#{record.noForm}</strong>
-              <span className="text-slate-400 block text-[10px] font-mono">SR: {record.noSr || '-'}</span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[11px]">Alamat Pemasangan:</span>
-              <p className="text-slate-200 line-clamp-2 uppercase text-[11px]">
-                {record.alamatPasang}, Kec. {record.kecamatanPasang || 'Tangerang'}
-              </p>
-            </div>
-          </div>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Lokasi Pasang Sambungan</span>
+                  <p className="text-slate-800 text-xs font-medium leading-tight">
+                    {record.alamatPasang}, RT/RW {record.rtRwPasang}
+                  </p>
+                  <span className="text-[11px] text-[#005DAA] font-semibold block">
+                    Kel. {record.kelurahanPasang || record.desaPasang}, Kec. {record.kecamatanPasang}
+                  </span>
+                </div>
+              </div>
 
-          {/* DOKUMEN PERSYARATAN ADMINISTRASI (KTP, KK, PBB) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-400" />
-                <span>Dokumen Persyaratan Administrasi ({uploadedDocs.length} Terlampir)</span>
-              </h4>
-              <span className="text-[11px] text-slate-400">Klik gambar untuk melihat resolusi penuh</span>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[11px]">
+                <span className="text-slate-600">
+                  Peruntukan: <strong className="text-slate-900">{record.fungsiBangunan}</strong>
+                </span>
+                <span className="text-slate-600">
+                  Golongan Tarif: <strong className="text-[#005DAA]">{record.golonganTarif || 'R2 = Rumah Tangga 2'}</strong>
+                </span>
+                <span className="text-slate-600 font-mono">
+                  Biaya Sambungan: <strong className="text-emerald-700 font-bold">Rp {(record.biayaSambungan || 1371545).toLocaleString('id-ID')}</strong>
+                </span>
+              </div>
             </div>
 
-            {uploadedDocs.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {uploadedDocs.map((item) => (
-                  <div
-                    key={item.key}
-                    onClick={() =>
-                      setActiveViewer({
+            {/* SEKSI PREVIEW DOKUMEN YANG DIUNGGAH (KTP, KK, PBB & 3 FOTO PROPERTI) */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-[#005DAA]" />
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wide">
+                    Foto Dokumen Persyaratan &amp; Properti Lapangan ({uploadedDocs.length + propertyPhotos.length} Berkas)
+                  </h4>
+                </div>
+                <span className="text-[10px] text-slate-500">Klik foto untuk perbesar / zoom</span>
+              </div>
+
+              {/* Grid Dokumen Administrasi */}
+              {uploadedDocs.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {uploadedDocs.map((item) => (
+                    <div
+                      key={item.key}
+                      onClick={() => setActiveViewer({
                         isOpen: true,
                         imageUrl: item.doc!.dataUrl,
                         title: item.label,
-                        description: `Berkas Pemohon: ${record.namaKtp} (No. Form #${record.noForm})`,
-                      })
-                    }
-                    className="p-3 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500/60 hover:bg-slate-800/80 transition cursor-pointer group flex flex-col items-center gap-2 text-center"
-                  >
-                    <div className="relative w-full h-24 rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center">
-                      <img
-                        src={item.doc!.dataUrl}
-                        alt={item.label}
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                        <Eye className="w-6 h-6" />
+                        description: `Berkas ${item.label} milik pemohon ${record.namaKtp}`,
+                      })}
+                      className="group cursor-pointer rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:border-[#005DAA] transition relative flex flex-col"
+                    >
+                      <div className="aspect-video bg-black/5 flex items-center justify-center overflow-hidden relative">
+                        <img
+                          src={item.doc!.dataUrl}
+                          alt={item.label}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1 text-white text-[11px] font-bold">
+                          <Eye className="w-4 h-4" /> Buka Foto
+                        </div>
+                      </div>
+                      <div className="p-2 bg-white text-[11px]">
+                        <strong className="block text-slate-800 truncate">{item.label}</strong>
+                        <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                          <CheckCircle2 className="w-3 h-3" /> Terlampir
+                        </span>
                       </div>
                     </div>
-                    <span className="text-[11px] font-bold text-slate-200 group-hover:text-white truncate w-full">
-                      {item.label}
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>Pelanggan belum mengunggah foto dokumen identitas e-KTP.</span>
+                </div>
+              )}
+
+              {/* Grid 3 Foto Properti Lapangan */}
+              {propertyPhotos.length > 0 && (
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-700 block">Dokumentasi Foto Properti Lapangan:</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {propertyPhotos.map((photo, idx) => (
+                      <div
+                        key={photo.id || idx}
+                        onClick={() => setActiveViewer({
+                          isOpen: true,
+                          imageUrl: photo.dataUrl,
+                          title: photo.caption || `Foto Properti Lapangan ${idx + 1}`,
+                          description: `Foto dokumentasi fisik persil & rencana titik meter di ${record.alamatPasang}`,
+                        })}
+                        className="group cursor-pointer rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:border-[#005DAA] transition relative flex flex-col"
+                      >
+                        <div className="aspect-video bg-black/5 flex items-center justify-center overflow-hidden relative">
+                          <img
+                            src={photo.dataUrl}
+                            alt={photo.caption || 'Foto Properti'}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1 text-white text-[11px] font-bold">
+                            <Eye className="w-4 h-4" /> Buka Foto
+                          </div>
+                        </div>
+                        <div className="p-2 bg-white text-[11px]">
+                          <strong className="block text-slate-800 truncate">{photo.caption || `Foto ${idx + 1}`}</strong>
+                          <span className="text-[10px] text-slate-500">{photo.timestamp || 'Tersimpan'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bukti Transfer Pembayaran jika ada */}
+              {record.paymentProof?.dataUrl && (
+                <div className="pt-3 border-t border-slate-100 bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-900 text-xs flex items-center gap-1.5">
+                      <Receipt className="w-4 h-4 text-emerald-700" />
+                      Bukti Struk Transfer Pembayaran Biaya Sambungan
+                    </span>
+                    <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-bold">
+                      Saluran: {record.paymentProof.bank || 'Bank Transfer'}
                     </span>
                   </div>
-                ))}
+
+                  <div className="flex flex-col sm:flex-row items-center gap-4 pt-1">
+                    <div
+                      onClick={() => setActiveViewer({
+                        isOpen: true,
+                        imageUrl: record.paymentProof!.dataUrl,
+                        title: 'Bukti Transfer Pembayaran Biaya Sambungan',
+                        description: `Struk pembayaran ${record.namaKtp} - Saluran: ${record.paymentProof?.bank} (${record.paymentProof?.tanggalBayar})`,
+                      })}
+                      className="group cursor-pointer rounded-xl border-2 border-emerald-300 overflow-hidden bg-slate-100 hover:border-emerald-600 transition relative aspect-video w-48 shrink-0 flex items-center justify-center shadow-xs"
+                    >
+                      <img
+                        src={record.paymentProof.dataUrl}
+                        alt="Bukti Transfer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1 text-white text-[11px] font-bold">
+                        <Eye className="w-4 h-4" /> Perbesar Struk
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-700 space-y-1">
+                      <div>Bank / Kanal: <strong className="text-slate-900">{record.paymentProof.bank}</strong></div>
+                      <div>Tanggal Bayar: <strong className="text-slate-900">{record.paymentProof.tanggalBayar}</strong></div>
+                      {record.paymentProof.catatan && (
+                        <div>Catatan: <span className="text-slate-600 italic">&ldquo;{record.paymentProof.catatan}&rdquo;</span></div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!isRejecting ? (
+              <div className="space-y-4">
+                
+                {/* JIKA TAHAP 1: Terbitkan Nomor Pembayaran */}
+                {!isPaymentVerificationStage && (
+                  <div className="bg-blue-50/80 p-4 rounded-2xl border-2 border-blue-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-black text-slate-900 uppercase tracking-wide">
+                        1. Nomor Pembayaran Pelanggan (Virtual Account / Kode Bayar) <span className="text-red-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleGenerateNewNo}
+                        className="inline-flex items-center gap-1 text-[11px] text-[#005DAA] hover:underline font-bold cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Generate Otomatis</span>
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <CreditCard className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        required
+                        value={nomorPembayaran}
+                        onChange={(e) => setNomorPembayaran(e.target.value.replace(/\s+/g, ''))}
+                        placeholder="Contoh: 88290165050"
+                        className="w-full pl-9 pr-24 py-2.5 bg-white border-2 border-blue-300 rounded-xl font-mono text-base font-black text-[#005DAA] tracking-wider focus:outline-hidden focus:ring-2 focus:ring-[#005DAA]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyNo}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-blue-100 hover:bg-blue-200 text-[#005DAA] rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      >
+                        {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{copied ? 'Tersalin' : 'Salin'}</span>
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Nomor ini akan tampil langsung di halaman pelanggan untuk melakukan pembayaran biaya pasang baru di seluruh kanal mitra resmi (BCA, Mandiri, BRI, BNI, Indomaret, Alfamart, Tokopedia, dll).
+                    </p>
+                  </div>
+                )}
+
+                {/* JIKA TAHAP 2 (SETELAH PELANGGAN UPLOAD BUKTI BAYAR): Input ID Pelanggan Manual oleh Admin */}
+                {isPaymentVerificationStage && (
+                  <div className="bg-emerald-50/90 p-4 rounded-2xl border-2 border-emerald-400 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-black text-slate-900 uppercase tracking-wide">
+                        2. Masukkan ID Pelanggan Tetap (Aktivasi Sambungan Baru) <span className="text-red-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleGenerateNewIdPelanggan}
+                        className="inline-flex items-center gap-1 text-[11px] text-emerald-800 hover:underline font-bold cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>Generate Otomatis</span>
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        required
+                        value={idPelanggan}
+                        onChange={(e) => setIdPelanggan(e.target.value.replace(/\s+/g, ''))}
+                        placeholder="Contoh: 10842918"
+                        className="w-full pl-9 pr-24 py-2.5 bg-white border-2 border-emerald-500 rounded-xl font-mono text-base font-black text-emerald-900 tracking-wider focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyId}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedId ? 'Tersalin' : 'Salin'}</span>
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium">
+                      Setelah ID Pelanggan diinput dan disetujui, tampilan di portal pelanggan otomatis beralih menjadi <strong>&ldquo;Pembayaran Telah Berhasil&rdquo;</strong> dan lanjut ke tahap penerbitan SPKO fisik.
+                    </p>
+                  </div>
+                )}
+
+                {/* Biaya & Catatan */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                      Total Biaya Sambungan Baru (Rp) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={biayaSambungan}
+                      onChange={(e) => setBiayaSambungan(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Catatan Verifikasi Petugas
+                    </label>
+                    <input
+                      type="text"
+                      value={adminNotes}
+                      onChange={(e) => setAdminNotes(e.target.value)}
+                      placeholder="Catatan persetujuan admin"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-[#005DAA] focus:outline-hidden"
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="p-4 rounded-2xl bg-slate-900/60 border border-dashed border-slate-800 text-center text-slate-400 text-xs">
-                Tidak ada dokumen digital terlampir pada formulir ini.
+              /* REJECTION MODE */
+              <div className="space-y-4">
+                <div className="bg-red-50 p-4 rounded-2xl border-2 border-red-200 space-y-3">
+                  <label className="block text-xs font-bold text-red-950 uppercase tracking-wide">
+                    Alasan Penolakan / Permintaan Revisi Berkas <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Tuliskan alasan penolakan secara jelas untuk pelanggan..."
+                    className="w-full p-3 bg-white border border-red-300 rounded-xl text-xs focus:ring-2 focus:ring-red-500 focus:outline-hidden"
+                  />
+                </div>
               </div>
             )}
           </div>
 
-          {/* BUKTI PEMBAYARAN KASIR (JIKA ADA) */}
-          {paymentProofDoc && (
-            <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/60 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                  <ReceiptText className="w-4 h-4" />
-                  <span>Struk / Bukti Pembayaran Pelanggan Terlampir</span>
-                </span>
-                <span className="text-[11px] text-emerald-300/80 font-mono">
-                  {paymentProofDoc.bank} • {paymentProofDoc.tanggalBayar}
-                </span>
-              </div>
-
-              <div
-                onClick={() =>
-                  setActiveViewer({
-                    isOpen: true,
-                    imageUrl: paymentProofDoc.dataUrl,
-                    title: 'Bukti Pembayaran Biaya Sambungan Baru',
-                    description: `Kanal: ${paymentProofDoc.bank} | Tgl: ${paymentProofDoc.tanggalBayar}`,
-                  })
-                }
-                className="flex items-center gap-4 p-3 rounded-xl bg-slate-900/90 border border-emerald-500/30 hover:bg-slate-900 cursor-pointer group"
-              >
-                <img
-                  src={paymentProofDoc.dataUrl}
-                  alt="Struk Bayar"
-                  className="w-16 h-16 object-cover rounded-xl border border-emerald-500/40"
-                />
-                <div className="flex-1">
-                  <span className="text-xs font-bold text-white block">
-                    Struk Validasi Bank / Kasir Minimarket
-                  </span>
-                  <p className="text-[11px] text-slate-400">
-                    Klik untuk memeriksa nomor referensi &amp; nominal transfer secara jelas.
-                  </p>
-                </div>
+          {/* Footer */}
+          <div className="p-4 bg-slate-100 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              {!isRejecting ? (
                 <button
                   type="button"
-                  className="px-3 py-2 rounded-xl bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600/50 text-xs font-bold transition"
+                  onClick={() => setIsRejecting(true)}
+                  className="px-4 py-2 rounded-xl text-red-600 hover:bg-red-50 text-xs font-bold transition cursor-pointer"
                 >
-                  <Eye className="w-4 h-4" />
+                  Tolak Permohonan...
                 </button>
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsRejecting(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-200 text-xs font-bold transition cursor-pointer"
+                >
+                  Batal Tolak (Kembali ke Setujui)
+                </button>
+              )}
             </div>
-          )}
 
-          {/* INPUT FORM SECTION */}
-          {!isRejecting ? (
-            <div className="space-y-4 pt-2 border-t border-slate-800">
-              {/* TAHAP 1: INPUT NOMOR PEMBAYARAN (VA) */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-blue-400" />
-                    <span>Nomor Pembayaran (Virtual Account 12-Digit) <strong className="text-amber-400">*</strong></span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleGenerateNewNo}
-                    className="text-[11px] text-blue-400 hover:text-blue-300 font-bold"
-                  >
-                    + Buat Nomor Baru
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={nomorPembayaran}
-                    onChange={(e) => setNomorPembayaran(e.target.value.replace(/\D/g, ''))}
-                    placeholder="88290XXXXXXXXX"
-                    className="flex-1 font-mono text-base font-bold bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-amber-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyNo}
-                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition"
-                  >
-                    {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    <span>{copied ? 'Tersalin' : 'Salin'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* TAHAP 2: INPUT ID PELANGGAN (UNTUK AKTIVASI SETELAH BAYAR) */}
-              <div className="p-4 rounded-2xl bg-blue-950/30 border border-blue-800/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span>ID Pelanggan Resmi (Nomor Rekening Tagihan Bulanan)</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleGenerateNewIdPelanggan}
-                    className="text-[11px] text-blue-400 hover:text-blue-300 font-bold"
-                  >
-                    + Generate ID Baru
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={idPelanggan}
-                    onChange={(e) => setIdPelanggan(e.target.value.replace(/\D/g, ''))}
-                    placeholder="10884920"
-                    className="flex-1 font-mono text-base font-bold bg-slate-900 border border-blue-500/50 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyId}
-                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition"
-                  >
-                    {copiedId ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    <span>{copiedId ? 'Tersalin' : 'Salin'}</span>
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  ID Pelanggan ini akan langsung tersinkronisasi ke portal pelanggan untuk pengecekan tagihan bulanan.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Biaya Sambungan Baru (Rp)
-                  </label>
-                  <input
-                    type="number"
-                    value={biayaSambungan}
-                    onChange={(e) => setBiayaSambungan(Number(e.target.value))}
-                    className="w-full font-mono text-sm font-bold bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-emerald-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Catatan Verifikator Admin
-                  </label>
-                  <input
-                    type="text"
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                    className="w-full text-xs bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-200 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 rounded-2xl bg-red-950/40 border border-red-800/60 space-y-3 animate-in fade-in duration-200">
-              <label className="block text-xs font-bold text-red-300">
-                Alasan Penolakan / Permintaan Revisi Berkas:
-              </label>
-              <textarea
-                rows={3}
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                className="w-full text-xs bg-slate-900 border border-red-500/50 rounded-xl p-3 text-red-200 focus:ring-2 focus:ring-red-500 focus:outline-none"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Footer Actions */}
-        <div className="p-6 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
-          {!isRejecting ? (
-            <>
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsRejecting(true)}
-                className="px-4 py-2.5 rounded-xl border border-red-500/50 text-red-400 hover:bg-red-500/10 text-xs font-bold transition flex items-center gap-1.5"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-200 text-xs font-bold transition cursor-pointer"
               >
-                <XCircle className="w-4 h-4" />
-                <span>Tolak / Minta Revisi</span>
+                Tutup
               </button>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold transition"
-                >
-                  Batal
-                </button>
+              {!isRejecting ? (
                 <button
                   type="button"
                   onClick={handleConfirmApprove}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-600/30 transition flex items-center gap-2"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/30 transition cursor-pointer"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                   <span>
                     {isPaymentVerificationStage
-                      ? 'Verifikasi Lunas & Terbitkan ID Pelanggan'
-                      : 'Setujui & Terbitkan No. Bayar'}
+                      ? 'Simpan ID Pelanggan & Konfirmasi Pembayaran Selesai'
+                      : 'Setujui Berkas & Terbitkan Nomor Pembayaran'}
                   </span>
                 </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setIsRejecting(false)}
-                className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold transition"
-              >
-                Kembali ke Verifikasi
-              </button>
-
-              <button
-                type="button"
-                onClick={handleConfirmReject}
-                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-red-600/30 transition flex items-center gap-2"
-              >
-                <XCircle className="w-4 h-4" />
-                <span>Kirim Penolakan Berkas</span>
-              </button>
-            </>
-          )}
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConfirmReject}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-600/30 transition cursor-pointer"
+                >
+                  <XCircle className="w-4 h-4 text-white" />
+                  <span>Konfirmasi Tolak Permohonan</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Lightbox Preview */}
+      {/* Lightbox Document & Photo Viewer */}
       <DocumentImageViewerModal
         isOpen={activeViewer.isOpen}
         onClose={() => setActiveViewer((prev) => ({ ...prev, isOpen: false }))}
@@ -476,6 +565,6 @@ export const AdminApprovalModal: React.FC<AdminApprovalModalProps> = ({
         title={activeViewer.title}
         description={activeViewer.description}
       />
-    </div>
+    </>
   );
 };
